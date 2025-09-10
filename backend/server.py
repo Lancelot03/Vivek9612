@@ -191,7 +191,15 @@ async def submit_response(response_data: ResponseCreate):
         
         # Create response
         response = Response(**response_data.dict())
-        await db.responses.insert_one(response.dict())
+        response_dict = response.dict()
+        
+        # Convert date objects to strings for MongoDB storage
+        if response_dict.get('arrivalDate'):
+            response_dict['arrivalDate'] = response_dict['arrivalDate'].isoformat()
+        if response_dict.get('departureDate'):
+            response_dict['departureDate'] = response_dict['departureDate'].isoformat()
+            
+        await db.responses.insert_one(response_dict)
         
         # Mark invitee as responded
         await db.invitees.update_one(
