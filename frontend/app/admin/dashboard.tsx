@@ -56,26 +56,50 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Logout', 
-          style: 'destructive',
-          onPress: () => {
-            try {
-              router.replace('/');
-            } catch (error) {
-              console.error('Navigation error:', error);
-              // Fallback navigation
-              router.push('/');
-            }
-          }
-        },
-      ]
-    );
+    console.log('Logout button clicked');
+    
+    // Create a simple logout function
+    const performLogout = () => {
+      console.log('Performing logout...');
+      try {
+        // Try multiple navigation methods
+        router.replace('/');
+      } catch (error) {
+        console.error('Router.replace failed:', error);
+        try {
+          router.push('/');
+        } catch (pushError) {
+          console.error('Router.push failed:', pushError);
+          // Force reload as last resort
+          window.location.href = '/';
+        }
+      }
+    };
+
+    // Show alert with improved handling
+    try {
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to logout?',
+        [
+          { 
+            text: 'Cancel', 
+            style: 'cancel',
+            onPress: () => console.log('Logout cancelled')
+          },
+          { 
+            text: 'Logout', 
+            style: 'destructive',
+            onPress: performLogout
+          },
+        ],
+        { cancelable: true }
+      );
+    } catch (alertError) {
+      console.error('Alert failed, performing direct logout:', alertError);
+      // If Alert fails, just perform logout directly
+      performLogout();
+    }
   };
 
   if (loading) {
