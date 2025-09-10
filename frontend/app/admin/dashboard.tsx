@@ -40,6 +40,7 @@ export default function AdminDashboard() {
         const data = await response.json();
         setStats(data);
       } else {
+        console.error('Failed to fetch stats:', response.status);
         Alert.alert('Error', 'Failed to fetch dashboard statistics');
       }
     } catch (error) {
@@ -69,7 +70,7 @@ export default function AdminDashboard() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#dc3545" />
+          <ActivityIndicator size="large" color="#007bff" />
           <Text style={styles.loadingText}>Loading dashboard...</Text>
         </View>
       </SafeAreaView>
@@ -174,7 +175,7 @@ export default function AdminDashboard() {
 
             <TouchableOpacity
               style={styles.managementCard}
-              onPress={() => navigateToSection('gallery')}
+              onPress={() => navigateToSection('gallery-admin')}
             >
               <Text style={styles.managementIcon}>📸</Text>
               <Text style={styles.managementTitle}>Gallery Management</Text>
@@ -241,7 +242,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   header: {
-    backgroundColor: '#dc3545',
+    backgroundColor: '#007bff',
     padding: 24,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -352,7 +353,7 @@ const styles = StyleSheet.create({
   foodPreferenceCount: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#dc3545',
+    color: '#007bff',
   },
   managementSection: {
     padding: 24,

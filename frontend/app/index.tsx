@@ -60,7 +60,7 @@ export default function Index() {
   };
 
   const handleAdminLogin = () => {
-    router.push('/admin/login');
+    router.push('/admin/dashboard');
   };
 
   if (loading) {
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   header: {
-    backgroundColor: '#dc3545',
+    backgroundColor: '#007bff',
     padding: 24,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   },
   arrow: {
     fontSize: 20,
-    color: '#dc3545',
+    color: '#007bff',
     fontWeight: 'bold',
   },
   infoSection: {
