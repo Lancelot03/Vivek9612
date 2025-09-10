@@ -156,7 +156,7 @@ export default function EventInfo() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#dc3545" />
+          <ActivityIndicator size="large" color="#007bff" />
           <Text style={styles.loadingText}>Loading event information...</Text>
         </View>
       </SafeAreaView>
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   header: {
-    backgroundColor: '#dc3545',
+    backgroundColor: '#007bff',
     padding: 24,
   },
   headerTitle: {
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: '#dc3545',
+    borderBottomColor: '#007bff',
   },
   tabText: {
     fontSize: 16,
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   activeTabText: {
-    color: '#dc3545',
+    color: '#007bff',
     fontWeight: 'bold',
   },
   tabContent: {
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   modalCloseText: {
-    color: '#dc3545',
+    color: '#007bff',
     fontSize: 16,
     fontWeight: '600',
   },

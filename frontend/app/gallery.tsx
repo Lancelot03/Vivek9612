@@ -151,7 +151,7 @@ export default function Gallery() {
     if (loading) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#dc3545" />
+          <ActivityIndicator size="large" color="#007bff" />
           <Text style={styles.loadingText}>Loading photos...</Text>
         </View>
       );
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    backgroundColor: '#dc3545',
+    backgroundColor: '#007bff',
     padding: 24,
     flexDirection: 'row',
     alignItems: 'center',
@@ -341,8 +341,8 @@ const styles = StyleSheet.create({
     borderColor: '#e9ecef',
   },
   activeEventTab: {
-    backgroundColor: '#dc3545',
-    borderColor: '#dc3545',
+    backgroundColor: '#007bff',
+    borderColor: '#007bff',
   },
   eventTabText: {
     fontSize: 14,
