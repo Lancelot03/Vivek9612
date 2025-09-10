@@ -61,7 +61,19 @@ export default function AdminDashboard() {
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', onPress: () => router.replace('/') },
+        { 
+          text: 'Logout', 
+          style: 'destructive',
+          onPress: () => {
+            try {
+              router.replace('/');
+            } catch (error) {
+              console.error('Navigation error:', error);
+              // Fallback navigation
+              router.push('/');
+            }
+          }
+        },
       ]
     );
   };
