@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   header: {
-    backgroundColor: '#dc3545',
+    backgroundColor: '#007bff',
     padding: 24,
     flexDirection: 'row',
     alignItems: 'center',
@@ -381,8 +381,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   radioOptionSelected: {
-    borderColor: '#dc3545',
-    backgroundColor: '#fff5f5',
+    borderColor: '#007bff',
+    backgroundColor: '#e7f3ff',
   },
   radioCircle: {
     width: 20,
@@ -393,15 +393,15 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   radioCircleSelected: {
-    borderColor: '#dc3545',
-    backgroundColor: '#dc3545',
+    borderColor: '#007bff',
+    backgroundColor: '#007bff',
   },
   radioText: {
     fontSize: 16,
     color: '#6c757d',
   },
   radioTextSelected: {
-    color: '#dc3545',
+    color: '#007bff',
     fontWeight: '600',
   },
   foodPreferenceGroup: {
@@ -416,8 +416,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   foodOptionSelected: {
-    borderColor: '#dc3545',
-    backgroundColor: '#fff5f5',
+    borderColor: '#007bff',
+    backgroundColor: '#e7f3ff',
   },
   foodOptionText: {
     fontSize: 16,
@@ -425,11 +425,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   foodOptionTextSelected: {
-    color: '#dc3545',
+    color: '#007bff',
     fontWeight: '600',
   },
   submitButton: {
-    backgroundColor: '#dc3545',
+    backgroundColor: '#007bff',
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
