@@ -289,6 +289,10 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
   },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -302,15 +306,17 @@ const styles = StyleSheet.create({
   logoutButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
+    minWidth: 80,
   },
   logoutButtonText: {
     color: 'white',
     fontWeight: '600',
     fontSize: 14,
+    textAlign: 'center',
   },
   statsSection: {
     padding: 24,
