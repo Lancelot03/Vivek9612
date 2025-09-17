@@ -42,13 +42,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (storedUser) {
         // Verify with server
-        const currentUser = await authService.getCurrentUser();
-        
-        if (currentUser) {
-          setUser(currentUser);
-          setIsAuthenticated(true);
-        } else {
-          // Token expired or invalid
+        try {
+          const currentUser = await authService.getCurrentUser();
+          
+          if (currentUser) {
+            setUser(currentUser);
+            setIsAuthenticated(true);
+          } else {
+            throw new Error('Token invalid');
+          }
+        } catch (error) {
+          // Token invalid, clear storage
+          await authService.logout();
           setUser(null);
           setIsAuthenticated(false);
         }
