@@ -21,6 +21,8 @@ from services.data_validation_service import DataValidationService
 from services.excel_export_service import ExcelExportService
 from services.performance_service import PerformanceService
 from services.feedback_service import FeedbackService
+from services.whatsapp_service import WhatsAppService  
+from services.document_service import DocumentService
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
