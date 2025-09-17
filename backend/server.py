@@ -1417,6 +1417,189 @@ async def get_employee_cab_allocation_enhanced(employee_id: str):
 
 # ================== END SPRINT 3 ROUTES ==================
 
+# ================== SPRINT 3 PRIORITY 4: PERFORMANCE & CAPACITY ROUTES ==================
+
+# Database Optimization
+@api_router.post("/performance/optimize-database")
+async def optimize_database():
+    """Create database indexes for better performance"""
+    try:
+        result = await performance_service.create_database_indexes()
+        return {
+            "message": "Database optimization completed successfully",
+            "optimization_result": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database optimization failed: {str(e)}")
+
+# Optimized Dashboard with Caching
+@api_router.get("/dashboard/stats-optimized")
+async def get_optimized_dashboard_stats():
+    """Get dashboard statistics with caching for better performance"""
+    try:
+        stats = await performance_service.get_dashboard_stats_optimized()
+        return {
+            "message": "Optimized dashboard statistics retrieved",
+            "stats": stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Dashboard stats fetch failed: {str(e)}")
+
+# Paginated Data Endpoints
+@api_router.get("/invitees/paginated")
+async def get_paginated_invitees(
+    page: int = 1, 
+    limit: int = 50,
+    cadre: Optional[str] = None,
+    projectName: Optional[str] = None,
+    hasResponded: Optional[bool] = None
+):
+    """Get paginated invitees with optional filters"""
+    try:
+        # Build filters
+        filters = {}
+        if cadre:
+            filters["cadre"] = {"$regex": cadre, "$options": "i"}
+        if projectName:
+            filters["projectName"] = {"$regex": projectName, "$options": "i"}
+        if hasResponded is not None:
+            filters["hasResponded"] = hasResponded
+        
+        result = await performance_service.get_paginated_invitees(page, limit, filters)
+        return {
+            "message": f"Retrieved page {page} of invitees",
+            "data": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Paginated invitees fetch failed: {str(e)}")
+
+@api_router.get("/responses/paginated")
+async def get_paginated_responses(
+    page: int = 1, 
+    limit: int = 50,
+    foodPreference: Optional[str] = None,
+    requiresAccommodation: Optional[bool] = None
+):
+    """Get paginated responses with employee details"""
+    try:
+        # Build filters
+        filters = {}
+        if foodPreference:
+            filters["foodPreference"] = foodPreference
+        if requiresAccommodation is not None:
+            filters["requiresAccommodation"] = requiresAccommodation
+        
+        result = await performance_service.get_paginated_responses(page, limit, filters)
+        return {
+            "message": f"Retrieved page {page} of responses",
+            "data": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Paginated responses fetch failed: {str(e)}")
+
+# Performance Monitoring
+@api_router.get("/performance/metrics")
+async def get_system_metrics():
+    """Get comprehensive system performance metrics"""
+    try:
+        metrics = await performance_service.get_system_metrics()
+        return {
+            "message": "System metrics retrieved successfully",
+            "metrics": metrics
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Metrics collection failed: {str(e)}")
+
+@api_router.get("/performance/recommendations")
+async def get_performance_recommendations():
+    """Get performance optimization recommendations"""
+    try:
+        recommendations = await performance_service.get_optimization_recommendations()
+        return {
+            "message": "Performance recommendations generated",
+            "recommendations": recommendations
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Recommendations generation failed: {str(e)}")
+
+# Performance Testing
+@api_router.post("/performance/test")
+async def run_performance_test(concurrent_users: int = 10, duration_seconds: int = 30):
+    """Run performance test for concurrent user capacity"""
+    try:
+        if concurrent_users > 100:
+            raise HTTPException(status_code=400, detail="Maximum 100 concurrent users allowed for testing")
+        
+        if duration_seconds > 120:
+            raise HTTPException(status_code=400, detail="Maximum 120 seconds duration allowed")
+        
+        results = await performance_service.run_performance_test(concurrent_users, duration_seconds)
+        return {
+            "message": f"Performance test completed for {concurrent_users} concurrent users",
+            "test_results": results
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Performance test failed: {str(e)}")
+
+# Cache Management
+@api_router.post("/performance/cache/clear")
+async def clear_performance_cache(pattern: Optional[str] = None):
+    """Clear performance cache entries"""
+    try:
+        performance_service.clear_cache(pattern)
+        return {
+            "message": "Cache cleared successfully",
+            "pattern": pattern or "all entries"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cache clear failed: {str(e)}")
+
+@api_router.get("/performance/cache/stats")
+async def get_cache_stats():
+    """Get cache performance statistics"""
+    try:
+        total_requests = performance_service.performance_metrics["cache_hits"] + performance_service.performance_metrics["cache_misses"]
+        hit_rate = 0
+        if total_requests > 0:
+            hit_rate = (performance_service.performance_metrics["cache_hits"] / total_requests) * 100
+        
+        return {
+            "message": "Cache statistics retrieved",
+            "cache_stats": {
+                "total_entries": len(performance_service.cache),
+                "cache_hits": performance_service.performance_metrics["cache_hits"],
+                "cache_misses": performance_service.performance_metrics["cache_misses"],
+                "hit_rate_percent": round(hit_rate, 2),
+                "total_requests": total_requests
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cache stats failed: {str(e)}")
+
+# Connection Pool Management
+@api_router.get("/performance/connections")
+async def get_connection_info():
+    """Get database connection information"""
+    try:
+        # Get database server status
+        server_status = await db.command("serverStatus")
+        
+        return {
+            "message": "Connection information retrieved",
+            "connection_info": {
+                "active_connections": performance_service.performance_metrics["active_connections"],
+                "database_connections": server_status.get("connections", {}),
+                "uptime_seconds": server_status.get("uptime", 0),
+                "version": server_status.get("version", "unknown")
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Connection info failed: {str(e)}")
+
+# ================== END SPRINT 3 PRIORITY 4 ROUTES ==================
+
 # ================== CAB ALLOCATION ROUTES ==================
 
 @api_router.post("/cab-allocations/upload")
