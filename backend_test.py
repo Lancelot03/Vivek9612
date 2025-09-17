@@ -1017,6 +1017,35 @@ startxref
         self.test_refresh_dashboard_totals()
         print()
         
+        # ================== SPRINT 3 TESTS ==================
+        print("✈️ SPRINT 3: LOGISTICS & USER DATA TESTS")
+        print("-" * 40)
+        
+        # Flight Time Preferences Tests
+        print("✈️ Flight Time Preferences API:")
+        self.test_flight_preference_options()
+        self.test_submit_response_with_flight_preferences()
+        self.test_flight_preference_analysis()
+        print()
+        
+        # Enhanced User Profile Management Tests
+        print("👤 Enhanced User Profile Management:")
+        self.test_get_user_profile()
+        self.test_update_user_profile()
+        print()
+        
+        # Enhanced Cab Logistics Tests
+        print("🚗 Enhanced Cab Logistics with Name Resolution:")
+        self.test_enhanced_cab_allocations()
+        self.test_enhanced_employee_cab_allocation()
+        print()
+        
+        # Updated Export Functionality Tests
+        print("📊 Updated Export with Flight Preferences:")
+        self.test_export_with_flight_preferences()
+        self.test_advanced_export_with_flight_preferences()
+        print()
+        
         # Summary
         self.print_summary()
     
