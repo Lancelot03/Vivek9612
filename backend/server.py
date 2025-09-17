@@ -30,6 +30,8 @@ db = client[os.environ.get('DB_NAME', 'pm_connect_db')]
 
 # Initialize services
 auth_service = AuthService(db)
+data_validation_service = DataValidationService(db)
+excel_export_service = ExcelExportService(db)
 
 # Create the main app without a prefix
 app = FastAPI(title="PM Connect 3.0 API")
