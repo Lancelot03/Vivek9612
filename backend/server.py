@@ -1147,6 +1147,274 @@ async def refresh_dashboard_totals():
 
 # ================== END SPRINT 2 ROUTES ==================
 
+# ================== SPRINT 3: LOGISTICS & USER DATA ROUTES ==================
+
+# Flight Time Preferences API
+@api_router.get("/flight/preferences/options")
+async def get_flight_preference_options():
+    """Get available flight time preference options"""
+    return {
+        "departure_time_options": [
+            {"value": "Morning", "label": "Morning (6:00 AM - 12:00 PM)"},
+            {"value": "Afternoon", "label": "Afternoon (12:00 PM - 6:00 PM)"},
+            {"value": "Evening", "label": "Evening (6:00 PM - 12:00 AM)"},
+            {"value": "No Preference", "label": "No Preference"}
+        ],
+        "arrival_time_options": [
+            {"value": "Morning", "label": "Morning (6:00 AM - 12:00 PM)"},
+            {"value": "Afternoon", "label": "Afternoon (12:00 PM - 6:00 PM)"},
+            {"value": "Evening", "label": "Evening (6:00 PM - 12:00 AM)"},
+            {"value": "No Preference", "label": "No Preference"}
+        ]
+    }
+
+@api_router.get("/responses/flight-analysis")
+async def get_flight_preference_analysis():
+    """Get analysis of flight time preferences for logistics planning"""
+    try:
+        # Get all responses with flight preferences
+        responses_with_accommodation = await db.responses.find({
+            "requiresAccommodation": True
+        }).to_list(1000)
+        
+        departure_analysis = {}
+        arrival_analysis = {}
+        
+        for response in responses_with_accommodation:
+            # Analyze departure preferences
+            dep_pref = response.get("departureTimePreference", "Not Specified")
+            departure_analysis[dep_pref] = departure_analysis.get(dep_pref, 0) + 1
+            
+            # Analyze arrival preferences
+            arr_pref = response.get("arrivalTimePreference", "Not Specified")
+            arrival_analysis[arr_pref] = arrival_analysis.get(arr_pref, 0) + 1
+        
+        # Get special requirements count
+        special_requirements_count = await db.responses.count_documents({
+            "requiresAccommodation": True,
+            "specialFlightRequirements": {"$ne": None, "$ne": ""}
+        })
+        
+        return {
+            "message": "Flight preference analysis completed",
+            "analysis": {
+                "total_flight_travelers": len(responses_with_accommodation),
+                "departure_preferences": departure_analysis,
+                "arrival_preferences": arrival_analysis,
+                "special_requirements_count": special_requirements_count
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+# Enhanced User Profile Management
+class UserProfileUpdate(BaseModel):
+    employeeName: Optional[str] = None
+    cadre: Optional[str] = None
+    projectName: Optional[str] = None
+    officeType: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    department: Optional[str] = None
+
+@api_router.get("/profile/{employee_id}")
+async def get_user_profile(employee_id: str):
+    """Get comprehensive user profile"""
+    try:
+        # Get user data
+        user = await db.users.find_one({"employeeId": employee_id})
+        invitee = await db.invitees.find_one({"employeeId": employee_id})
+        response = await db.responses.find_one({"employeeId": employee_id})
+        
+        if not user and not invitee:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Build comprehensive profile
+        profile = {
+            "employeeId": employee_id,
+            "employeeName": user.get("employeeName") if user else invitee.get("employeeName"),
+            "cadre": user.get("cadre") if user else invitee.get("cadre"),
+            "projectName": user.get("projectName") if user else invitee.get("projectName"),
+            "officeType": user.get("officeType") if user else None,
+            "email": invitee.get("email", "") if invitee else "",
+            "phone": invitee.get("phone", "") if invitee else "",
+            "department": invitee.get("department", "") if invitee else "",
+            "role": user.get("role", "invitee") if user else "invitee",
+            "hasResponded": invitee.get("hasResponded", False) if invitee else False,
+            "isFirstLogin": user.get("isFirstLogin", True) if user else True,
+            "lastLogin": user.get("lastLogin") if user else None,
+            "rsvp_details": None
+        }
+        
+        # Add RSVP details if available
+        if response:
+            profile["rsvp_details"] = {
+                "mobileNumber": response.get("mobileNumber"),
+                "requiresAccommodation": response.get("requiresAccommodation"),
+                "arrivalDate": response.get("arrivalDate"),
+                "departureDate": response.get("departureDate"),
+                "foodPreference": response.get("foodPreference"),
+                "departureTimePreference": response.get("departureTimePreference"),
+                "arrivalTimePreference": response.get("arrivalTimePreference"),
+                "specialFlightRequirements": response.get("specialFlightRequirements"),
+                "submissionTimestamp": response.get("submissionTimestamp")
+            }
+        
+        return profile
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Profile fetch failed: {str(e)}")
+
+@api_router.put("/profile/{employee_id}")
+async def update_user_profile(employee_id: str, profile_update: UserProfileUpdate):
+    """Update user profile information"""
+    try:
+        update_data = {}
+        
+        # Build update data from non-None fields
+        for field, value in profile_update.dict().items():
+            if value is not None:
+                update_data[field] = value
+        
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No update data provided")
+        
+        # Update user table if exists
+        user_result = await db.users.update_one(
+            {"employeeId": employee_id},
+            {"$set": update_data}
+        )
+        
+        # Update invitee table if exists
+        invitee_result = await db.invitees.update_one(
+            {"employeeId": employee_id},
+            {"$set": update_data}
+        )
+        
+        if user_result.matched_count == 0 and invitee_result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return {
+            "message": "Profile updated successfully",
+            "updated_fields": list(update_data.keys()),
+            "user_updated": user_result.modified_count > 0,
+            "invitee_updated": invitee_result.modified_count > 0
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Profile update failed: {str(e)}")
+
+# Enhanced Cab Logistics with Employee Name Resolution
+@api_router.get("/cab-allocations/enhanced")
+async def get_enhanced_cab_allocations():
+    """Get cab allocations with employee name resolution"""
+    try:
+        allocations = await db.cab_allocations.find().to_list(1000)
+        invitees = await db.invitees.find().to_list(10000)
+        
+        # Create invitee lookup
+        invitee_lookup = {inv["employeeId"]: inv for inv in invitees}
+        
+        enhanced_allocations = []
+        for allocation in allocations:
+            enhanced_members = []
+            for emp_id in allocation["assignedMembers"]:
+                invitee = invitee_lookup.get(emp_id, {})
+                enhanced_members.append({
+                    "employeeId": emp_id,
+                    "employeeName": invitee.get("employeeName", "Unknown"),
+                    "cadre": invitee.get("cadre", ""),
+                    "projectName": invitee.get("projectName", ""),
+                    "hasResponded": invitee.get("hasResponded", False)
+                })
+            
+            enhanced_allocation = {
+                "cabId": str(allocation.get("_id", "")),
+                "cabNumber": allocation["cabNumber"],
+                "pickupLocation": allocation["pickupLocation"],
+                "pickupTime": allocation["pickupTime"],
+                "assignedMembers": allocation["assignedMembers"],
+                "memberDetails": enhanced_members,
+                "totalMembers": len(enhanced_members),
+                "respondedMembers": len([m for m in enhanced_members if m["hasResponded"]])
+            }
+            enhanced_allocations.append(enhanced_allocation)
+        
+        return {
+            "message": "Enhanced cab allocations retrieved successfully",
+            "allocations": enhanced_allocations,
+            "summary": {
+                "total_cabs": len(enhanced_allocations),
+                "total_members": sum(alloc["totalMembers"] for alloc in enhanced_allocations),
+                "responded_members": sum(alloc["respondedMembers"] for alloc in enhanced_allocations)
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Enhanced cab allocations fetch failed: {str(e)}")
+
+@api_router.get("/cab-allocations/employee/{employee_id}/enhanced")
+async def get_employee_cab_allocation_enhanced(employee_id: str):
+    """Get enhanced cab allocation details for specific employee"""
+    try:
+        allocation = await db.cab_allocations.find_one({"assignedMembers": employee_id})
+        if not allocation:
+            return {"message": "No cab allocation found", "allocation": None}
+        
+        # Get details for all cab members
+        invitees = await db.invitees.find({
+            "employeeId": {"$in": allocation["assignedMembers"]}
+        }).to_list(100)
+        
+        responses = await db.responses.find({
+            "employeeId": {"$in": allocation["assignedMembers"]}
+        }).to_list(100)
+        
+        # Create lookups
+        invitee_lookup = {inv["employeeId"]: inv for inv in invitees}
+        response_lookup = {resp["employeeId"]: resp for resp in responses}
+        
+        enhanced_members = []
+        for emp_id in allocation["assignedMembers"]:
+            invitee = invitee_lookup.get(emp_id, {})
+            response = response_lookup.get(emp_id)
+            
+            member_detail = {
+                "employeeId": emp_id,
+                "employeeName": invitee.get("employeeName", "Unknown"),
+                "cadre": invitee.get("cadre", ""),
+                "projectName": invitee.get("projectName", ""),
+                "hasResponded": invitee.get("hasResponded", False),
+                "mobileNumber": response.get("mobileNumber", "") if response else "",
+                "isCurrentUser": emp_id == employee_id
+            }
+            enhanced_members.append(member_detail)
+        
+        enhanced_allocation = {
+            "cabId": str(allocation.get("_id", "")),
+            "cabNumber": allocation["cabNumber"],
+            "pickupLocation": allocation["pickupLocation"],
+            "pickupTime": allocation["pickupTime"],
+            "memberDetails": enhanced_members,
+            "totalMembers": len(enhanced_members),
+            "respondedMembers": len([m for m in enhanced_members if m["hasResponded"]])
+        }
+        
+        return {
+            "message": "Enhanced cab allocation found",
+            "allocation": enhanced_allocation
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Enhanced cab allocation fetch failed: {str(e)}")
+
+# ================== END SPRINT 3 ROUTES ==================
+
 # ================== CAB ALLOCATION ROUTES ==================
 
 @api_router.post("/cab-allocations/upload")
