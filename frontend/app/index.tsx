@@ -64,7 +64,7 @@ export default function Index() {
       // Handle missing office type
       if (!user.officeType && !isAdmin()) {
         router.replace({
-          pathname: '/auth/office-type',
+          pathname: '/auth/set-office-type',
           params: { employeeCode: user.employeeId },
         });
         return;
