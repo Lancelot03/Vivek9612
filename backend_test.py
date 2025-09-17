@@ -932,6 +932,291 @@ startxref
         except Exception as e:
             self.log_test("Advanced Export with Flight Preferences", False, f"Exception: {str(e)}")
 
+    # ================== SPRINT 3 PRIORITY 4: PERFORMANCE & CAPACITY TESTS ==================
+    
+    def test_database_optimization(self):
+        """Test database optimization with index creation"""
+        try:
+            response = self.session.post(f"{BASE_URL}/performance/optimize-database")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'optimization_result' in data:
+                    result = data['optimization_result']
+                    indexes_created = result.get('indexes_created', [])
+                    success = result.get('success', False)
+                    
+                    self.log_test("Database Optimization", True, 
+                                f"Database optimized: {success}, {len(indexes_created)} indexes created", 
+                                {"success": success, "indexes": len(indexes_created)})
+                else:
+                    self.log_test("Database Optimization", False, "Missing optimization_result in response")
+            else:
+                self.log_test("Database Optimization", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Database Optimization", False, f"Exception: {str(e)}")
+    
+    def test_optimized_dashboard_stats(self):
+        """Test optimized dashboard statistics with caching"""
+        try:
+            response = self.session.get(f"{BASE_URL}/dashboard/stats-optimized")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'stats' in data:
+                    stats = data['stats']
+                    total_invitees = stats.get('totalInvitees', 0)
+                    cache_hit = stats.get('cache_hit', False)
+                    query_time = stats.get('query_time_ms', 0)
+                    
+                    self.log_test("Optimized Dashboard Stats", True, 
+                                f"Optimized stats retrieved: {total_invitees} invitees, "
+                                f"cache hit: {cache_hit}, query time: {query_time}ms", 
+                                {"stats": stats, "cached": cache_hit})
+                else:
+                    self.log_test("Optimized Dashboard Stats", False, "Missing stats in response")
+            else:
+                self.log_test("Optimized Dashboard Stats", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Optimized Dashboard Stats", False, f"Exception: {str(e)}")
+    
+    def test_paginated_invitees(self):
+        """Test paginated invitees endpoint with filters"""
+        try:
+            # Test basic pagination
+            response = self.session.get(f"{BASE_URL}/invitees/paginated?page=1&limit=10")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'data' in data:
+                    result = data['data']
+                    items = result.get('items', [])
+                    pagination = result.get('pagination', {})
+                    total_pages = pagination.get('total_pages', 0)
+                    total_items = pagination.get('total_items', 0)
+                    
+                    self.log_test("Paginated Invitees (Basic)", True, 
+                                f"Retrieved page 1: {len(items)} items, {total_pages} total pages, {total_items} total items", 
+                                {"items": len(items), "pagination": pagination})
+                    
+                    # Test with filters
+                    filter_response = self.session.get(f"{BASE_URL}/invitees/paginated?page=1&limit=5&hasResponded=true")
+                    if filter_response.status_code == 200:
+                        filter_data = filter_response.json()
+                        filter_result = filter_data['data']
+                        filter_items = filter_result.get('items', [])
+                        
+                        self.log_test("Paginated Invitees (Filtered)", True, 
+                                    f"Filtered results: {len(filter_items)} responded invitees", 
+                                    {"filtered_items": len(filter_items)})
+                    else:
+                        self.log_test("Paginated Invitees (Filtered)", False, f"Filter test failed: HTTP {filter_response.status_code}")
+                        
+                else:
+                    self.log_test("Paginated Invitees (Basic)", False, "Missing data in response")
+            else:
+                self.log_test("Paginated Invitees (Basic)", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Paginated Invitees", False, f"Exception: {str(e)}")
+    
+    def test_paginated_responses(self):
+        """Test paginated responses endpoint with filters"""
+        try:
+            # Test basic pagination
+            response = self.session.get(f"{BASE_URL}/responses/paginated?page=1&limit=10")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'data' in data:
+                    result = data['data']
+                    items = result.get('items', [])
+                    pagination = result.get('pagination', {})
+                    total_pages = pagination.get('total_pages', 0)
+                    total_items = pagination.get('total_items', 0)
+                    
+                    self.log_test("Paginated Responses (Basic)", True, 
+                                f"Retrieved page 1: {len(items)} responses, {total_pages} total pages, {total_items} total items", 
+                                {"items": len(items), "pagination": pagination})
+                    
+                    # Test with food preference filter
+                    filter_response = self.session.get(f"{BASE_URL}/responses/paginated?page=1&limit=5&foodPreference=Veg")
+                    if filter_response.status_code == 200:
+                        filter_data = filter_response.json()
+                        filter_result = filter_data['data']
+                        filter_items = filter_result.get('items', [])
+                        
+                        self.log_test("Paginated Responses (Filtered)", True, 
+                                    f"Filtered results: {len(filter_items)} vegetarian responses", 
+                                    {"filtered_items": len(filter_items)})
+                    else:
+                        self.log_test("Paginated Responses (Filtered)", False, f"Filter test failed: HTTP {filter_response.status_code}")
+                        
+                else:
+                    self.log_test("Paginated Responses (Basic)", False, "Missing data in response")
+            else:
+                self.log_test("Paginated Responses (Basic)", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Paginated Responses", False, f"Exception: {str(e)}")
+    
+    def test_system_metrics(self):
+        """Test comprehensive system performance metrics"""
+        try:
+            response = self.session.get(f"{BASE_URL}/performance/metrics")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'metrics' in data:
+                    metrics = data['metrics']
+                    database_metrics = metrics.get('database', {})
+                    system_metrics = metrics.get('system', {})
+                    cache_metrics = metrics.get('cache', {})
+                    
+                    # Check key metrics
+                    db_collections = len(database_metrics.get('collections', []))
+                    total_documents = database_metrics.get('total_documents', 0)
+                    cache_hit_rate = cache_metrics.get('hit_rate_percent', 0)
+                    
+                    self.log_test("System Performance Metrics", True, 
+                                f"Metrics retrieved: {db_collections} collections, {total_documents} documents, "
+                                f"{cache_hit_rate}% cache hit rate", 
+                                {"database": db_collections, "documents": total_documents, "cache_hit_rate": cache_hit_rate})
+                else:
+                    self.log_test("System Performance Metrics", False, "Missing metrics in response")
+            else:
+                self.log_test("System Performance Metrics", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("System Performance Metrics", False, f"Exception: {str(e)}")
+    
+    def test_performance_recommendations(self):
+        """Test performance optimization recommendations"""
+        try:
+            response = self.session.get(f"{BASE_URL}/performance/recommendations")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'recommendations' in data:
+                    recommendations = data['recommendations']
+                    general_recs = recommendations.get('general', [])
+                    database_recs = recommendations.get('database', [])
+                    cache_recs = recommendations.get('cache', [])
+                    
+                    total_recommendations = len(general_recs) + len(database_recs) + len(cache_recs)
+                    
+                    self.log_test("Performance Recommendations", True, 
+                                f"Recommendations generated: {total_recommendations} total "
+                                f"({len(general_recs)} general, {len(database_recs)} database, {len(cache_recs)} cache)", 
+                                {"total": total_recommendations, "categories": 3})
+                else:
+                    self.log_test("Performance Recommendations", False, "Missing recommendations in response")
+            else:
+                self.log_test("Performance Recommendations", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Performance Recommendations", False, f"Exception: {str(e)}")
+    
+    def test_performance_test(self):
+        """Test concurrent user capacity performance testing"""
+        try:
+            # Use small numbers for testing to avoid overwhelming the system
+            concurrent_users = 5
+            duration_seconds = 10
+            
+            response = self.session.post(f"{BASE_URL}/performance/test?concurrent_users={concurrent_users}&duration_seconds={duration_seconds}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'test_results' in data:
+                    results = data['test_results']
+                    total_requests = results.get('total_requests', 0)
+                    successful_requests = results.get('successful_requests', 0)
+                    failed_requests = results.get('failed_requests', 0)
+                    avg_response_time = results.get('average_response_time_ms', 0)
+                    success_rate = results.get('success_rate_percent', 0)
+                    
+                    self.log_test("Performance Test", True, 
+                                f"Performance test completed: {concurrent_users} users, {duration_seconds}s duration, "
+                                f"{total_requests} requests, {success_rate}% success rate, {avg_response_time}ms avg response", 
+                                {"requests": total_requests, "success_rate": success_rate, "avg_time": avg_response_time})
+                else:
+                    self.log_test("Performance Test", False, "Missing test_results in response")
+            else:
+                self.log_test("Performance Test", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Performance Test", False, f"Exception: {str(e)}")
+    
+    def test_cache_management(self):
+        """Test cache management functionality"""
+        try:
+            # Test cache stats
+            stats_response = self.session.get(f"{BASE_URL}/performance/cache/stats")
+            
+            if stats_response.status_code == 200:
+                stats_data = stats_response.json()
+                if 'cache_stats' in stats_data:
+                    cache_stats = stats_data['cache_stats']
+                    total_entries = cache_stats.get('total_entries', 0)
+                    cache_hits = cache_stats.get('cache_hits', 0)
+                    cache_misses = cache_stats.get('cache_misses', 0)
+                    hit_rate = cache_stats.get('hit_rate_percent', 0)
+                    
+                    self.log_test("Cache Statistics", True, 
+                                f"Cache stats: {total_entries} entries, {cache_hits} hits, "
+                                f"{cache_misses} misses, {hit_rate}% hit rate", 
+                                {"entries": total_entries, "hit_rate": hit_rate})
+                    
+                    # Test cache clear
+                    clear_response = self.session.post(f"{BASE_URL}/performance/cache/clear")
+                    if clear_response.status_code == 200:
+                        clear_data = clear_response.json()
+                        self.log_test("Cache Clear", True, 
+                                    f"Cache cleared successfully: {clear_data.get('message', 'Unknown')}", 
+                                    {"cleared": True})
+                    else:
+                        self.log_test("Cache Clear", False, f"Cache clear failed: HTTP {clear_response.status_code}")
+                        
+                else:
+                    self.log_test("Cache Statistics", False, "Missing cache_stats in response")
+            else:
+                self.log_test("Cache Statistics", False, f"HTTP {stats_response.status_code}: {stats_response.text}")
+                
+        except Exception as e:
+            self.log_test("Cache Management", False, f"Exception: {str(e)}")
+    
+    def test_connection_info(self):
+        """Test database connection information"""
+        try:
+            response = self.session.get(f"{BASE_URL}/performance/connections")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'connection_info' in data:
+                    conn_info = data['connection_info']
+                    active_connections = conn_info.get('active_connections', 0)
+                    db_connections = conn_info.get('database_connections', {})
+                    uptime = conn_info.get('uptime_seconds', 0)
+                    version = conn_info.get('version', 'unknown')
+                    
+                    current_connections = db_connections.get('current', 0)
+                    available_connections = db_connections.get('available', 0)
+                    
+                    self.log_test("Database Connection Info", True, 
+                                f"Connection info: {active_connections} active, {current_connections} current DB connections, "
+                                f"{available_connections} available, uptime: {uptime}s, version: {version}", 
+                                {"active": active_connections, "current": current_connections, "uptime": uptime})
+                else:
+                    self.log_test("Database Connection Info", False, "Missing connection_info in response")
+            else:
+                self.log_test("Database Connection Info", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Database Connection Info", False, f"Exception: {str(e)}")
+
     def run_all_tests(self):
         """Run comprehensive test suite"""
         print("=" * 80)
