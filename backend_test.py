@@ -1331,6 +1331,39 @@ startxref
         self.test_advanced_export_with_flight_preferences()
         print()
         
+        # ================== SPRINT 3 PRIORITY 4 TESTS ==================
+        print("⚡ SPRINT 3 PRIORITY 4: PERFORMANCE & CAPACITY OPTIMIZATION TESTS")
+        print("-" * 40)
+        
+        # Database Optimization Tests
+        print("🗄️ Database Optimization:")
+        self.test_database_optimization()
+        self.test_optimized_dashboard_stats()
+        print()
+        
+        # Paginated Data Endpoints Tests
+        print("📄 Paginated Data Endpoints:")
+        self.test_paginated_invitees()
+        self.test_paginated_responses()
+        print()
+        
+        # Performance Monitoring Tests
+        print("📊 Performance Monitoring:")
+        self.test_system_metrics()
+        self.test_performance_recommendations()
+        self.test_connection_info()
+        print()
+        
+        # Performance Testing
+        print("🚀 Performance Testing:")
+        self.test_performance_test()
+        print()
+        
+        # Cache Management Tests
+        print("💾 Cache Management:")
+        self.test_cache_management()
+        print()
+        
         # Summary
         self.print_summary()
     
