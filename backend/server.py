@@ -16,6 +16,7 @@ from bson import ObjectId
 import pandas as pd
 import io
 from services.cloudinary_service import cloudinary_service
+from services.auth_service import AuthService
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
