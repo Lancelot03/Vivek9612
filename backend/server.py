@@ -556,26 +556,17 @@ async def export_responses():
 
 @api_router.get("/dashboard/stats", response_model=DashboardStats)
 async def get_dashboard_stats():
-    """Get dashboard statistics"""
+    """Get dashboard statistics (now optimized with caching)"""
     try:
-        total_invitees = await db.invitees.count_documents({})
-        rsvp_yes = await db.invitees.count_documents({"hasResponded": True})
-        rsvp_no = total_invitees - rsvp_yes
-        
-        accommodation_requests = await db.responses.count_documents({"requiresAccommodation": True})
-        
-        food_prefs = await db.responses.aggregate([
-            {"$group": {"_id": "$foodPreference", "count": {"$sum": 1}}}
-        ]).to_list(10)
-        
-        food_preferences = {pref["_id"]: pref["count"] for pref in food_prefs}
+        # Use optimized version with caching
+        optimized_stats = await performance_service.get_dashboard_stats_optimized()
         
         return DashboardStats(
-            totalInvitees=total_invitees,
-            rsvpYes=rsvp_yes,
-            rsvpNo=rsvp_no,
-            accommodationRequests=accommodation_requests,
-            foodPreferences=food_preferences
+            totalInvitees=optimized_stats["totalInvitees"],
+            rsvpYes=optimized_stats["rsvpYes"],
+            rsvpNo=optimized_stats["rsvpNo"],
+            accommodationRequests=optimized_stats["accommodationRequests"],
+            foodPreferences=optimized_stats["foodPreferences"]
         )
     
     except Exception as e:
