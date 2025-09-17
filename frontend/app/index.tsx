@@ -6,10 +6,11 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
-  Image,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
 import * as Constants from 'expo-constants';
 
 const EXPO_PUBLIC_BACKEND_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -25,9 +26,57 @@ export default function Index() {
   const [unrespondedInvitees, setUnrespondedInvitees] = useState<Invitee[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const { 
+    user, 
+    isAuthenticated, 
+    isLoading: authLoading, 
+    isAdmin, 
+    isFirstLogin, 
+    mustChangePassword 
+  } = useAuth();
+
   useEffect(() => {
-    fetchUnrespondedInvitees();
-  }, []);
+    handleAuthRedirects();
+  }, [isAuthenticated, user, authLoading]);
+
+  useEffect(() => {
+    if (!authLoading) {
+      fetchUnrespondedInvitees();
+    }
+  }, [authLoading]);
+
+  const handleAuthRedirects = () => {
+    if (authLoading) return;
+
+    if (isAuthenticated && user) {
+      // Handle first login flow
+      if (isFirstLogin() || mustChangePassword()) {
+        router.replace({
+          pathname: '/auth/change-password',
+          params: { 
+            employeeCode: user.employeeId,
+            isFirstLogin: isFirstLogin().toString()
+          },
+        });
+        return;
+      }
+
+      // Handle missing office type
+      if (!user.officeType && !isAdmin()) {
+        router.replace({
+          pathname: '/auth/office-type',
+          params: { employeeCode: user.employeeId },
+        });
+        return;
+      }
+
+      // Redirect admins to dashboard
+      if (isAdmin()) {
+        router.replace('/admin/dashboard');
+        return;
+      }
+    }
+  };
 
   const fetchUnrespondedInvitees = async () => {
     try {
@@ -60,19 +109,82 @@ export default function Index() {
   };
 
   const handleAdminLogin = () => {
-    router.push('/admin/dashboard');
+    router.push('/auth/login');
   };
 
-  if (loading) {
+  const handleEmployeeLogin = () => {
+    router.push('/auth/login');
+  };
+
+  if (authLoading || loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color="#007bff" />
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  // Show authenticated user view if logged in
+  if (isAuthenticated && user && !isFirstLogin() && !mustChangePassword() && user.officeType) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <Text style={styles.logoText}>PM Connect 3.0</Text>
+              <Text style={styles.subtitle}>Welcome back, {user.employeeName}!</Text>
+            </View>
+            <TouchableOpacity style={styles.profileButton} onPress={() => router.push('/profile')}>
+              <Text style={styles.profileButtonText}>👤</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* User Dashboard Content */}
+          <View style={styles.userDashboard}>
+            <Text style={styles.dashboardTitle}>Your Dashboard</Text>
+            
+            <TouchableOpacity 
+              style={styles.dashboardCard}
+              onPress={() => router.push('/event-info')}
+            >
+              <Text style={styles.cardIcon}>📋</Text>
+              <Text style={styles.cardTitle}>Event Information</Text>
+              <Text style={styles.cardDescription}>View agenda, cab details, and event updates</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.dashboardCard}
+              onPress={() => router.push('/gallery')}
+            >
+              <Text style={styles.cardIcon}>📸</Text>
+              <Text style={styles.cardTitle}>Event Gallery</Text>
+              <Text style={styles.cardDescription}>Browse photos and upload your memories</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.dashboardCard}
+              onPress={() => router.push('/rsvp')}
+            >
+              <Text style={styles.cardIcon}>✉️</Text>
+              <Text style={styles.cardTitle}>Update RSVP</Text>
+              <Text style={styles.cardDescription}>Modify your event response if needed</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Footer */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>© 2025 Jakson Limited. Powered by AI.</Text>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // Show public landing page for non-authenticated users
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
@@ -82,74 +194,85 @@ export default function Index() {
             <Text style={styles.logoText}>PM Connect 3.0</Text>
             <Text style={styles.subtitle}>Event Management & Logistics</Text>
           </View>
-          <TouchableOpacity style={styles.adminButton} onPress={handleAdminLogin}>
-            <Text style={styles.adminButtonText}>Admin Login</Text>
+        </View>
+
+        {/* Login Options */}
+        <View style={styles.loginSection}>
+          <Text style={styles.loginTitle}>Sign in to continue</Text>
+          
+          <TouchableOpacity style={styles.loginOption} onPress={handleEmployeeLogin}>
+            <Text style={styles.loginIcon}>👤</Text>
+            <View style={styles.loginInfo}>
+              <Text style={styles.loginOptionTitle}>Employee Login</Text>
+              <Text style={styles.loginOptionDescription}>
+                Sign in with your employee code and password
+              </Text>
+            </View>
+            <Text style={styles.loginArrow}>→</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.loginOption} onPress={handleAdminLogin}>
+            <Text style={styles.loginIcon}>🔐</Text>
+            <View style={styles.loginInfo}>
+              <Text style={styles.loginOptionTitle}>Admin Login</Text>
+              <Text style={styles.loginOptionDescription}>
+                Access admin dashboard and management tools
+              </Text>
+            </View>
+            <Text style={styles.loginArrow}>→</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Welcome Section */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>Welcome to PM Connect 3.0!</Text>
-          <Text style={styles.welcomeDescription}>
-            Please select your name from the list below to proceed with your RSVP and event information.
+        {/* Legacy Access (for existing invitees without accounts) */}
+        <View style={styles.legacySection}>
+          <Text style={styles.legacySectionTitle}>Don't have login credentials?</Text>
+          <Text style={styles.legacyDescription}>
+            If you're an existing invitee, you can still access the old interface below:
           </Text>
-        </View>
-
-        {/* Invitee Selection */}
-        <View style={styles.inviteeSection}>
-          <Text style={styles.sectionTitle}>Select Your Name</Text>
           
-          {unrespondedInvitees.length === 0 ? (
-            <View style={styles.noInviteesContainer}>
-              <Text style={styles.noInviteesText}>
-                No pending invitations found. All invitees may have already responded.
-              </Text>
-            </View>
-          ) : (
+          {unrespondedInvitees.length > 0 && (
             <View style={styles.inviteeList}>
-              {unrespondedInvitees.map((invitee) => (
+              <Text style={styles.inviteeListTitle}>Quick RSVP Access:</Text>
+              {unrespondedInvitees.slice(0, 3).map((invitee) => (
                 <TouchableOpacity
                   key={invitee.employeeId}
-                  style={styles.inviteeCard}
+                  style={styles.quickInviteeCard}
                   onPress={() => handleInviteeSelect(invitee)}
                 >
-                  <View style={styles.inviteeCardContent}>
-                    <Text style={styles.inviteeName}>{invitee.employeeName}</Text>
-                    <Text style={styles.inviteeDetails}>
-                      {invitee.cadre} • {invitee.projectName}
-                    </Text>
-                    <Text style={styles.inviteeId}>ID: {invitee.employeeId}</Text>
-                  </View>
-                  <View style={styles.arrowContainer}>
-                    <Text style={styles.arrow}>→</Text>
-                  </View>
+                  <Text style={styles.quickInviteeName}>{invitee.employeeName}</Text>
+                  <Text style={styles.quickInviteeId}>ID: {invitee.employeeId}</Text>
                 </TouchableOpacity>
               ))}
+              {unrespondedInvitees.length > 3 && (
+                <Text style={styles.moreInvitees}>
+                  +{unrespondedInvitees.length - 3} more invitees...
+                </Text>
+              )}
             </View>
           )}
         </View>
 
         {/* Information Section */}
         <View style={styles.infoSection}>
-          <Text style={styles.infoTitle}>What happens next?</Text>
+          <Text style={styles.infoTitle}>New Authentication System</Text>
           <View style={styles.infoSteps}>
             <View style={styles.infoStep}>
               <View style={styles.stepNumber}>
                 <Text style={styles.stepNumberText}>1</Text>
               </View>
-              <Text style={styles.stepText}>Select your name from the list above</Text>
+              <Text style={styles.stepText}>Use your Employee Code as username</Text>
             </View>
             <View style={styles.infoStep}>
               <View style={styles.stepNumber}>
                 <Text style={styles.stepNumberText}>2</Text>
               </View>
-              <Text style={styles.stepText}>Fill out your RSVP and logistics information</Text>
+              <Text style={styles.stepText}>Initial password is your Employee Code</Text>
             </View>
             <View style={styles.infoStep}>
               <View style={styles.stepNumber}>
                 <Text style={styles.stepNumberText}>3</Text>
               </View>
-              <Text style={styles.stepText}>Access event information, agenda, and gallery</Text>
+              <Text style={styles.stepText}>Change password on first login</Text>
             </View>
           </View>
         </View>
@@ -182,6 +305,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 18,
     color: '#666',
+    marginTop: 12,
   },
   header: {
     backgroundColor: '#007bff',
@@ -203,93 +327,149 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.9)',
   },
-  adminButton: {
+  profileButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  adminButtonText: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 14,
+  profileButtonText: {
+    fontSize: 20,
   },
-  welcomeSection: {
+  loginSection: {
     padding: 24,
     backgroundColor: 'white',
     marginBottom: 16,
   },
-  welcomeTitle: {
+  loginTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#2c3e50',
-    marginBottom: 12,
+    marginBottom: 20,
+    textAlign: 'center',
   },
-  welcomeDescription: {
-    fontSize: 16,
+  loginOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  loginIcon: {
+    fontSize: 32,
+    marginRight: 16,
+  },
+  loginInfo: {
+    flex: 1,
+  },
+  loginOptionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    marginBottom: 4,
+  },
+  loginOptionDescription: {
+    fontSize: 14,
     color: '#6c757d',
-    lineHeight: 24,
+    lineHeight: 20,
   },
-  inviteeSection: {
+  loginArrow: {
+    fontSize: 20,
+    color: '#007bff',
+    fontWeight: 'bold',
+    marginLeft: 12,
+  },
+  userDashboard: {
     padding: 24,
     backgroundColor: 'white',
     marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 20,
+  dashboardTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#2c3e50',
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  noInviteesContainer: {
-    padding: 32,
-    alignItems: 'center',
-  },
-  noInviteesText: {
-    fontSize: 16,
-    color: '#6c757d',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  inviteeList: {
-    gap: 12,
-  },
-  inviteeCard: {
+  dashboardCard: {
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    padding: 20,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#e9ecef',
   },
-  inviteeCardContent: {
-    flex: 1,
+  cardIcon: {
+    fontSize: 32,
+    marginBottom: 12,
   },
-  inviteeName: {
+  cardTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
     color: '#2c3e50',
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  inviteeDetails: {
+  cardDescription: {
     fontSize: 14,
     color: '#6c757d',
-    marginBottom: 4,
+    lineHeight: 20,
   },
-  inviteeId: {
-    fontSize: 12,
-    color: '#adb5bd',
+  legacySection: {
+    padding: 24,
+    backgroundColor: '#fff8e1',
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#ffc107',
   },
-  arrowContainer: {
-    marginLeft: 12,
-  },
-  arrow: {
-    fontSize: 20,
-    color: '#007bff',
+  legacySectionTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
+    color: '#856404',
+    marginBottom: 12,
+  },
+  legacyDescription: {
+    fontSize: 14,
+    color: '#856404',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  inviteeList: {
+    marginTop: 8,
+  },
+  inviteeListTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#856404',
+    marginBottom: 12,
+  },
+  quickInviteeCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#f0c674',
+  },
+  quickInviteeName: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#856404',
+  },
+  quickInviteeId: {
+    fontSize: 12,
+    color: '#856404',
+    opacity: 0.8,
+  },
+  moreInvitees: {
+    fontSize: 12,
+    color: '#856404',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 8,
   },
   infoSection: {
     padding: 24,
