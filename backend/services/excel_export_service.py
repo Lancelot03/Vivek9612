@@ -293,7 +293,7 @@ class ExcelExportService:
                     "Mobile Number": response.get("mobileNumber", "") if response else "",
                     "Accommodation": "Yes" if response and response.get("requiresAccommodation") else "No" if response else "",
                     "Food Preference": response.get("foodPreference", "") if response else "",
-                    "Response Date": response.get("submissionTimestamp", "").split('T')[0] if response and response.get("submissionTimestamp") else ""
+                    "Response Date": response.get("submissionTimestamp").strftime('%Y-%m-%d') if response and response.get("submissionTimestamp") else ""
                 }
                 invitee_data.append(invitee_row)
             
