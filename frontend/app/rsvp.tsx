@@ -540,4 +540,41 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  // Sprint 3: Flight Preference Styles
+  inputHint: {
+    fontSize: 14,
+    color: '#6c757d',
+    marginBottom: 12,
+    fontStyle: 'italic',
+  },
+  flightPreferenceGroup: {
+    gap: 8,
+  },
+  flightOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ced4da',
+    backgroundColor: 'white',
+    marginBottom: 8,
+  },
+  flightOptionSelected: {
+    borderColor: '#007bff',
+    backgroundColor: '#e7f3ff',
+  },
+  flightOptionText: {
+    fontSize: 14,
+    color: '#6c757d',
+    flex: 1,
+  },
+  flightOptionTextSelected: {
+    color: '#007bff',
+    fontWeight: '600',
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
 });
