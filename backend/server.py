@@ -1874,6 +1874,458 @@ async def get_branding_info():
 
 # ================== END SPRINT 4 ROUTES ==================
 
+# ================== SPRINT 5: MESSAGING & DOCS ROUTES ==================
+
+# WhatsApp Integration Routes
+class WhatsAppMessage(BaseModel):
+    phone_number: str
+    message: str
+
+class BulkWhatsAppMessage(BaseModel):
+    recipients: List[Dict[str, str]]  # [{"phone_number": "xxx", "message": "xxx"}]
+    delay_seconds: Optional[int] = 2
+
+class TemplateMessage(BaseModel):
+    phone_number: str
+    template_name: str
+    variables: Dict[str, str]
+
+class EventUpdate(BaseModel):
+    update_message: str
+    target_group: Optional[str] = "all"  # all, responded, not_responded, accommodation
+
+@api_router.get("/whatsapp/status")
+async def get_whatsapp_status():
+    """Get WhatsApp service connection status"""
+    try:
+        status = await whatsapp_service.check_whatsapp_status()
+        return {
+            "message": "WhatsApp status retrieved",
+            "status": status
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"WhatsApp status check failed: {str(e)}")
+
+@api_router.get("/whatsapp/qr")
+async def get_whatsapp_qr():
+    """Get WhatsApp QR code for authentication"""
+    try:
+        qr_code = await whatsapp_service.get_qr_code()
+        return {
+            "message": "QR code retrieved" if qr_code else "No QR code available",
+            "qr": qr_code
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"QR code retrieval failed: {str(e)}")
+
+@api_router.post("/whatsapp/send")
+async def send_whatsapp_message(message_data: WhatsAppMessage):
+    """Send individual WhatsApp message"""
+    try:
+        result = await whatsapp_service.send_message(message_data.phone_number, message_data.message)
+        return {
+            "message": "Message sent successfully" if result["success"] else "Message sending failed",
+            "result": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Message sending failed: {str(e)}")
+
+@api_router.post("/whatsapp/send/bulk")
+async def send_bulk_whatsapp_messages(bulk_data: BulkWhatsAppMessage, current_user: dict = Depends(get_current_user)):
+    """Send bulk WhatsApp messages"""
+    try:
+        results = await whatsapp_service.send_bulk_messages(bulk_data.recipients, bulk_data.delay_seconds)
+        return {
+            "message": "Bulk messages processed",
+            "results": results
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Bulk messaging failed: {str(e)}")
+
+@api_router.post("/whatsapp/send/template")
+async def send_template_message(template_data: TemplateMessage):
+    """Send message using predefined template"""
+    try:
+        result = await whatsapp_service.send_template_message(
+            template_data.phone_number,
+            template_data.template_name,
+            template_data.variables
+        )
+        return {
+            "message": "Template message sent successfully" if result["success"] else "Template message failed",
+            "result": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Template message failed: {str(e)}")
+
+@api_router.post("/whatsapp/send/rsvp-reminders")
+async def send_rsvp_reminders(days_before_deadline: int = 3, current_user: dict = Depends(get_current_user)):
+    """Send RSVP reminders to unresponded users"""
+    try:
+        results = await whatsapp_service.send_rsvp_reminders(days_before_deadline)
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"RSVP reminders failed: {str(e)}")
+
+@api_router.post("/whatsapp/send/event-update")
+async def send_event_update(update_data: EventUpdate, current_user: dict = Depends(get_current_user)):
+    """Send event updates to specified group"""
+    try:
+        results = await whatsapp_service.send_event_updates(update_data.update_message, update_data.target_group)
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Event update failed: {str(e)}")
+
+@api_router.get("/whatsapp/templates")
+async def get_whatsapp_templates():
+    """Get available WhatsApp message templates"""
+    try:
+        templates = whatsapp_service.get_available_templates()
+        return {
+            "message": "WhatsApp templates retrieved",
+            "templates": templates
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Templates retrieval failed: {str(e)}")
+
+@api_router.get("/whatsapp/logs")
+async def get_whatsapp_message_logs(
+    page: int = 1,
+    limit: int = 50,
+    phone_number: Optional[str] = None
+):
+    """Get WhatsApp message logs"""
+    try:
+        logs = await whatsapp_service.get_message_logs(page, limit, phone_number)
+        return {
+            "message": "WhatsApp message logs retrieved",
+            "data": logs
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Message logs retrieval failed: {str(e)}")
+
+@api_router.get("/whatsapp/analytics")
+async def get_whatsapp_analytics():
+    """Get WhatsApp messaging analytics"""
+    try:
+        analytics = await whatsapp_service.get_message_analytics()
+        return {
+            "message": "WhatsApp analytics retrieved",
+            "analytics": analytics
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"WhatsApp analytics failed: {str(e)}")
+
+# Document Management Routes
+@api_router.post("/documents/upload")
+async def upload_document(
+    category: str,
+    event_version: str,
+    file: UploadFile = File(...),
+    title: Optional[str] = None,
+    description: Optional[str] = None,
+    is_public: bool = True,
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload document (PDF, DOCX, PPTX)"""
+    try:
+        result = await document_service.upload_document(
+            file, category, event_version, current_user.get("employeeId"), title, description, is_public
+        )
+        return {
+            "message": "Document uploaded successfully",
+            "document": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Document upload failed: {str(e)}")
+
+@api_router.get("/documents/{document_id}")
+async def get_document(document_id: str):
+    """Get document by ID"""
+    try:
+        document = await document_service.get_document_by_id(document_id, track_download=True)
+        return {
+            "message": "Document retrieved successfully",
+            "document": document
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Document retrieval failed: {str(e)}")
+
+@api_router.get("/documents/{document_id}/download")
+async def download_document(document_id: str):
+    """Download document file"""
+    try:
+        from fastapi.responses import Response
+        
+        document = await document_service.get_document_by_id(document_id, track_download=True)
+        
+        # Decode base64 data
+        file_data = base64.b64decode(document["documentData"])
+        
+        # Determine content type
+        content_type = "application/octet-stream"
+        if document["fileType"] == ".pdf":
+            content_type = "application/pdf"
+        elif document["fileType"] == ".docx":
+            content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        elif document["fileType"] == ".pptx":
+            content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        
+        headers = {
+            "Content-Disposition": f"attachment; filename={document['filename']}",
+            "Content-Type": content_type
+        }
+        
+        return Response(content=file_data, headers=headers)
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Document download failed: {str(e)}")
+
+@api_router.get("/documents/category/{category}")
+async def get_documents_by_category(
+    category: str,
+    event_version: Optional[str] = None,
+    is_public: Optional[bool] = None
+):
+    """Get documents by category"""
+    try:
+        documents = await document_service.get_documents_by_category(category, event_version, is_public)
+        return {
+            "message": f"Documents retrieved for category: {category}",
+            "documents": documents
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Documents retrieval failed: {str(e)}")
+
+@api_router.get("/documents/public/all")
+async def get_public_documents(event_version: Optional[str] = None):
+    """Get all public documents organized by category"""
+    try:
+        documents = await document_service.get_public_documents(event_version)
+        return {
+            "message": "Public documents retrieved",
+            "documents_by_category": documents
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Public documents retrieval failed: {str(e)}")
+
+@api_router.get("/documents/search")
+async def search_documents(
+    q: str,
+    category: Optional[str] = None,
+    event_version: Optional[str] = None
+):
+    """Search documents"""
+    try:
+        documents = await document_service.search_documents(q, category, event_version)
+        return {
+            "message": f"Search results for: {q}",
+            "documents": documents
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Document search failed: {str(e)}")
+
+@api_router.delete("/documents/{document_id}")
+async def delete_document(document_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete document"""
+    try:
+        result = await document_service.delete_document(document_id, current_user.get("employeeId"))
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Document deletion failed: {str(e)}")
+
+@api_router.get("/documents/analytics")
+async def get_document_analytics():
+    """Get document analytics"""
+    try:
+        analytics = await document_service.get_document_analytics()
+        return {
+            "message": "Document analytics retrieved",
+            "analytics": analytics
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Document analytics failed: {str(e)}")
+
+@api_router.get("/documents/categories")
+async def get_document_categories():
+    """Get supported document categories"""
+    try:
+        categories = document_service.get_supported_categories()
+        return {
+            "message": "Document categories retrieved",
+            "categories": categories
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Categories retrieval failed: {str(e)}")
+
+@api_router.get("/documents/logs/downloads")
+async def get_download_logs(
+    page: int = 1,
+    limit: int = 50,
+    document_id: Optional[str] = None
+):
+    """Get document download logs"""
+    try:
+        logs = await document_service.get_download_logs(page, limit, document_id)
+        return {
+            "message": "Download logs retrieved",
+            "data": logs
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Download logs retrieval failed: {str(e)}")
+
+# Enhanced Notifications System
+class NotificationCreate(BaseModel):
+    title: str
+    message: str
+    type: str  # "info", "warning", "success", "error"
+    target_group: Optional[str] = "all"  # "all", "responded", "not_responded", "accommodation"
+    channels: List[str] = ["whatsapp"]  # "whatsapp", "email", "in-app"
+    schedule_at: Optional[datetime] = None
+    priority: Optional[str] = "medium"  # "low", "medium", "high", "urgent"
+
+@api_router.post("/notifications/send")
+async def send_notification(notification: NotificationCreate, current_user: dict = Depends(get_current_user)):
+    """Send notification through multiple channels"""
+    try:
+        results = {"channels": {}, "success": True, "errors": []}
+        
+        # Get target recipients based on group
+        query = {}
+        if notification.target_group == "responded":
+            query["hasResponded"] = True
+        elif notification.target_group == "not_responded":
+            query["hasResponded"] = False
+        elif notification.target_group == "accommodation":
+            accommodation_responses = await db.responses.find({"requiresAccommodation": True}).to_list(1000)
+            employee_ids = [r["employeeId"] for r in accommodation_responses]
+            query["employeeId"] = {"$in": employee_ids}
+        
+        recipients = await db.invitees.find(query).to_list(1000)
+        
+        # Send through WhatsApp if enabled
+        if "whatsapp" in notification.channels:
+            whatsapp_recipients = []
+            for recipient in recipients:
+                phone_number = recipient.get("phone", "")
+                if phone_number:
+                    formatted_message = f"📢 {notification.title}\n\n{notification.message}\n\nPM Connect Team"
+                    whatsapp_recipients.append({
+                        "phone_number": phone_number,
+                        "message": formatted_message
+                    })
+            
+            if whatsapp_recipients:
+                whatsapp_result = await whatsapp_service.send_bulk_messages(whatsapp_recipients, delay_seconds=2)
+                results["channels"]["whatsapp"] = whatsapp_result
+            else:
+                results["channels"]["whatsapp"] = {"message": "No valid phone numbers found", "sent": 0}
+        
+        # Log notification
+        notification_log = {
+            "notificationId": str(uuid.uuid4()),
+            "title": notification.title,
+            "message": notification.message,
+            "type": notification.type,
+            "targetGroup": notification.target_group,
+            "channels": notification.channels,
+            "totalRecipients": len(recipients),
+            "sentBy": current_user.get("employeeId"),
+            "sentAt": datetime.utcnow(),
+            "priority": notification.priority,
+            "results": results
+        }
+        await db.notification_logs.insert_one(notification_log)
+        
+        return {
+            "message": "Notification sent successfully",
+            "notificationId": notification_log["notificationId"],
+            "results": results
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Notification sending failed: {str(e)}")
+
+@api_router.get("/notifications/logs")
+async def get_notification_logs(page: int = 1, limit: int = 50):
+    """Get notification logs"""
+    try:
+        skip = (page - 1) * limit
+        
+        logs = await db.notification_logs.find()\
+            .sort("sentAt", -1)\
+            .skip(skip)\
+            .limit(limit)\
+            .to_list(limit)
+        
+        total_count = await db.notification_logs.count_documents({})
+        total_pages = (total_count + limit - 1) // limit
+        
+        # Clean up logs
+        for log in logs:
+            log.pop('_id', None)
+        
+        return {
+            "message": "Notification logs retrieved",
+            "logs": logs,
+            "pagination": {
+                "current_page": page,
+                "total_pages": total_pages,
+                "total_items": total_count,
+                "limit": limit,
+                "has_next": page < total_pages,
+                "has_prev": page > 1
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Notification logs failed: {str(e)}")
+
+# System Health and Status
+@api_router.get("/system/health")
+async def get_system_health():
+    """Get comprehensive system health status"""
+    try:
+        # Check all services
+        health_status = {
+            "timestamp": datetime.utcnow(),
+            "overall_status": "healthy",
+            "services": {}
+        }
+        
+        # Database health
+        try:
+            await db.command("ping")
+            health_status["services"]["database"] = {"status": "healthy", "response_time_ms": 0}
+        except Exception as e:
+            health_status["services"]["database"] = {"status": "unhealthy", "error": str(e)}
+            health_status["overall_status"] = "degraded"
+        
+        # WhatsApp service health
+        whatsapp_status = await whatsapp_service.check_whatsapp_status()
+        health_status["services"]["whatsapp"] = {
+            "status": "healthy" if whatsapp_status.get("connected") else "unhealthy",
+            "details": whatsapp_status
+        }
+        
+        # Performance metrics
+        performance_metrics = await performance_service.get_system_metrics()
+        health_status["services"]["performance"] = {
+            "status": "healthy",
+            "metrics": {
+                "cpu_percent": performance_metrics["system"]["cpu_percent"],
+                "memory_percent": performance_metrics["system"]["memory_percent"],
+                "cache_hit_rate": performance_metrics["cache"]["hit_rate_percent"]
+            }
+        }
+        
+        return health_status
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+
+# ================== END SPRINT 5 ROUTES ==================
+
 # ================== CAB ALLOCATION ROUTES ==================
 
 @api_router.post("/cab-allocations/upload")
