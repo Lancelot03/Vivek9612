@@ -649,6 +649,289 @@ startxref
         except Exception as e:
             self.log_test("Refresh Dashboard Totals", False, f"Exception: {str(e)}")
 
+    # ================== SPRINT 3: LOGISTICS & USER DATA TESTS ==================
+    
+    def test_flight_preference_options(self):
+        """Test getting flight time preference options"""
+        try:
+            response = self.session.get(f"{BASE_URL}/flight/preferences/options")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'departure_time_options' in data and 'arrival_time_options' in data:
+                    dep_options = len(data['departure_time_options'])
+                    arr_options = len(data['arrival_time_options'])
+                    self.log_test("Flight Preference Options", True, 
+                                f"Retrieved {dep_options} departure and {arr_options} arrival options", data)
+                else:
+                    self.log_test("Flight Preference Options", False, "Missing departure_time_options or arrival_time_options")
+            else:
+                self.log_test("Flight Preference Options", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Flight Preference Options", False, f"Exception: {str(e)}")
+    
+    def test_submit_response_with_flight_preferences(self, employee_id="EMP002"):
+        """Test submitting RSVP response with flight preferences"""
+        try:
+            response_data = {
+                "employeeId": employee_id,
+                "mobileNumber": "9876543211",
+                "requiresAccommodation": True,
+                "arrivalDate": "2024-03-15",
+                "departureDate": "2024-03-17",
+                "foodPreference": "Non-Veg",
+                "departureTimePreference": "Morning",
+                "arrivalTimePreference": "Evening",
+                "specialFlightRequirements": "Window seat preferred, vegetarian meal"
+            }
+            
+            response = self.session.post(f"{BASE_URL}/responses", json=response_data)
+            
+            if response.status_code == 200:
+                data = response.json()
+                self.log_test("Submit RSVP with Flight Preferences", True, 
+                            f"Response with flight preferences submitted: {data.get('responseId')}", data)
+                return data.get('responseId')
+            else:
+                self.log_test("Submit RSVP with Flight Preferences", False, f"HTTP {response.status_code}: {response.text}")
+                return None
+                
+        except Exception as e:
+            self.log_test("Submit RSVP with Flight Preferences", False, f"Exception: {str(e)}")
+            return None
+    
+    def test_flight_preference_analysis(self):
+        """Test flight preference analysis for logistics planning"""
+        try:
+            response = self.session.get(f"{BASE_URL}/responses/flight-analysis")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'analysis' in data:
+                    analysis = data['analysis']
+                    travelers = analysis.get('total_flight_travelers', 0)
+                    special_req = analysis.get('special_requirements_count', 0)
+                    dep_prefs = analysis.get('departure_preferences', {})
+                    arr_prefs = analysis.get('arrival_preferences', {})
+                    
+                    self.log_test("Flight Preference Analysis", True, 
+                                f"Analysis completed: {travelers} travelers, {special_req} special requirements, "
+                                f"{len(dep_prefs)} departure preferences, {len(arr_prefs)} arrival preferences", 
+                                {"analysis": analysis})
+                else:
+                    self.log_test("Flight Preference Analysis", False, "Missing analysis in response")
+            else:
+                self.log_test("Flight Preference Analysis", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Flight Preference Analysis", False, f"Exception: {str(e)}")
+    
+    def test_get_user_profile(self, employee_id="EMP001"):
+        """Test getting comprehensive user profile"""
+        try:
+            response = self.session.get(f"{BASE_URL}/profile/{employee_id}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'employeeId' in data:
+                    has_rsvp = data.get('rsvp_details') is not None
+                    has_responded = data.get('hasResponded', False)
+                    
+                    self.log_test("Get User Profile", True, 
+                                f"Profile retrieved for {employee_id}: {data.get('employeeName', 'Unknown')}, "
+                                f"responded: {has_responded}, has RSVP details: {has_rsvp}", 
+                                {"profile_complete": True, "has_rsvp": has_rsvp})
+                else:
+                    self.log_test("Get User Profile", False, "Missing employeeId in response")
+            elif response.status_code == 404:
+                self.log_test("Get User Profile", True, f"User {employee_id} not found (expected for non-existent users)", 
+                            {"status": "not_found"})
+            else:
+                self.log_test("Get User Profile", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Get User Profile", False, f"Exception: {str(e)}")
+    
+    def test_update_user_profile(self, employee_id="EMP001"):
+        """Test updating user profile information"""
+        try:
+            update_data = {
+                "officeType": "Branch Office",
+                "email": "rajesh.kumar@jakson.com",
+                "phone": "9876543210",
+                "department": "Engineering"
+            }
+            
+            response = self.session.put(f"{BASE_URL}/profile/{employee_id}", json=update_data)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'updated_fields' in data:
+                    updated_fields = data['updated_fields']
+                    user_updated = data.get('user_updated', False)
+                    invitee_updated = data.get('invitee_updated', False)
+                    
+                    self.log_test("Update User Profile", True, 
+                                f"Profile updated for {employee_id}: {len(updated_fields)} fields, "
+                                f"user table: {user_updated}, invitee table: {invitee_updated}", 
+                                {"updated_fields": updated_fields})
+                else:
+                    self.log_test("Update User Profile", False, "Missing updated_fields in response")
+            elif response.status_code == 404:
+                self.log_test("Update User Profile", True, f"User {employee_id} not found (expected for non-existent users)", 
+                            {"status": "not_found"})
+            else:
+                self.log_test("Update User Profile", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Update User Profile", False, f"Exception: {str(e)}")
+    
+    def test_enhanced_cab_allocations(self):
+        """Test enhanced cab allocations with employee name resolution"""
+        try:
+            response = self.session.get(f"{BASE_URL}/cab-allocations/enhanced")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'allocations' in data and 'summary' in data:
+                    allocations = data['allocations']
+                    summary = data['summary']
+                    total_cabs = summary.get('total_cabs', 0)
+                    total_members = summary.get('total_members', 0)
+                    responded_members = summary.get('responded_members', 0)
+                    
+                    # Check if allocations have enhanced member details
+                    has_enhanced_details = False
+                    if allocations:
+                        first_allocation = allocations[0]
+                        if 'memberDetails' in first_allocation and first_allocation['memberDetails']:
+                            first_member = first_allocation['memberDetails'][0]
+                            has_enhanced_details = 'employeeName' in first_member and 'hasResponded' in first_member
+                    
+                    self.log_test("Enhanced Cab Allocations", True, 
+                                f"Retrieved {total_cabs} cabs with {total_members} members, "
+                                f"{responded_members} responded, enhanced details: {has_enhanced_details}", 
+                                {"summary": summary, "enhanced": has_enhanced_details})
+                else:
+                    self.log_test("Enhanced Cab Allocations", False, "Missing allocations or summary in response")
+            else:
+                self.log_test("Enhanced Cab Allocations", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Enhanced Cab Allocations", False, f"Exception: {str(e)}")
+    
+    def test_enhanced_employee_cab_allocation(self, employee_id="EMP001"):
+        """Test enhanced cab allocation details for specific employee"""
+        try:
+            response = self.session.get(f"{BASE_URL}/cab-allocations/employee/{employee_id}/enhanced")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'allocation' in data:
+                    allocation = data['allocation']
+                    if allocation:  # Not None
+                        total_members = allocation.get('totalMembers', 0)
+                        responded_members = allocation.get('respondedMembers', 0)
+                        cab_number = allocation.get('cabNumber', 'Unknown')
+                        
+                        # Check for enhanced member details
+                        has_enhanced_details = False
+                        current_user_found = False
+                        if 'memberDetails' in allocation and allocation['memberDetails']:
+                            first_member = allocation['memberDetails'][0]
+                            has_enhanced_details = 'employeeName' in first_member and 'mobileNumber' in first_member
+                            current_user_found = any(m.get('isCurrentUser', False) for m in allocation['memberDetails'])
+                        
+                        self.log_test("Enhanced Employee Cab Allocation", True, 
+                                    f"Cab {cab_number} found for {employee_id}: {total_members} members, "
+                                    f"{responded_members} responded, enhanced details: {has_enhanced_details}, "
+                                    f"current user marked: {current_user_found}", 
+                                    {"has_allocation": True, "enhanced": has_enhanced_details})
+                    else:
+                        self.log_test("Enhanced Employee Cab Allocation", True, 
+                                    f"No cab allocation found for {employee_id}", 
+                                    {"has_allocation": False})
+                else:
+                    self.log_test("Enhanced Employee Cab Allocation", False, "Missing allocation in response")
+            else:
+                self.log_test("Enhanced Employee Cab Allocation", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Enhanced Employee Cab Allocation", False, f"Exception: {str(e)}")
+    
+    def test_export_with_flight_preferences(self):
+        """Test that Excel exports include new flight preference fields"""
+        try:
+            response = self.session.get(f"{BASE_URL}/responses/export")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'excel_data' in data:
+                    # Decode and check Excel content
+                    excel_data = base64.b64decode(data['excel_data'])
+                    df = pd.read_excel(io.BytesIO(excel_data))
+                    
+                    # Check for flight preference columns
+                    expected_columns = [
+                        'Departure Time Preference',
+                        'Arrival Time Preference', 
+                        'Special Flight Requirements'
+                    ]
+                    
+                    has_flight_columns = all(col in df.columns for col in expected_columns)
+                    
+                    self.log_test("Export with Flight Preferences", True, 
+                                f"Excel export includes flight preference fields: {has_flight_columns}, "
+                                f"columns: {list(df.columns)}", 
+                                {"has_flight_fields": has_flight_columns, "columns": list(df.columns)})
+                else:
+                    self.log_test("Export with Flight Preferences", True, "No responses to export", data)
+            else:
+                self.log_test("Export with Flight Preferences", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Export with Flight Preferences", False, f"Exception: {str(e)}")
+    
+    def test_advanced_export_with_flight_preferences(self):
+        """Test that advanced Excel exports include new flight preference fields"""
+        try:
+            response = self.session.post(f"{BASE_URL}/exports/responses/advanced")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'excel_data' in data:
+                    # Decode and check Excel content
+                    excel_data = base64.b64decode(data['excel_data'])
+                    
+                    # Read all sheets
+                    excel_file = pd.ExcelFile(io.BytesIO(excel_data))
+                    sheets = excel_file.sheet_names
+                    
+                    # Check main responses sheet for flight preference columns
+                    if 'All Responses' in sheets:
+                        df = pd.read_excel(io.BytesIO(excel_data), sheet_name='All Responses')
+                        expected_columns = [
+                            'Departure Time Preference',
+                            'Arrival Time Preference', 
+                            'Special Flight Requirements'
+                        ]
+                        has_flight_columns = all(col in df.columns for col in expected_columns)
+                    else:
+                        has_flight_columns = False
+                    
+                    self.log_test("Advanced Export with Flight Preferences", True, 
+                                f"Advanced export includes flight fields: {has_flight_columns}, "
+                                f"sheets: {sheets}", 
+                                {"has_flight_fields": has_flight_columns, "sheets": sheets})
+                else:
+                    self.log_test("Advanced Export with Flight Preferences", False, "Missing excel_data in response")
+            else:
+                self.log_test("Advanced Export with Flight Preferences", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Advanced Export with Flight Preferences", False, f"Exception: {str(e)}")
+
     def run_all_tests(self):
         """Run comprehensive test suite"""
         print("=" * 80)
