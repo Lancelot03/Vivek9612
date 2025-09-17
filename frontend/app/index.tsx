@@ -109,11 +109,19 @@ export default function Index() {
   };
 
   const handleAdminLogin = () => {
-    router.push('/auth/login');
+    try {
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Navigation error:', error);
+    }
   };
 
   const handleEmployeeLogin = () => {
-    router.push('/auth/login');
+    try {
+      router.push('/auth/login');
+    } catch (error) {
+      console.error('Navigation error:', error);
+    }
   };
 
   if (authLoading || loading) {
