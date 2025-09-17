@@ -195,14 +195,19 @@ class PerformanceService:
         
         total_count, invitees = await asyncio.gather(count_task, data_task)
         
+        # Convert ObjectId to string for JSON serialization
+        for invitee in invitees:
+            if '_id' in invitee:
+                invitee['_id'] = str(invitee['_id'])
+        
         total_pages = (total_count + limit - 1) // limit
         
         return {
-            "invitees": invitees,
+            "items": invitees,
             "pagination": {
                 "current_page": page,
                 "total_pages": total_pages,
-                "total_count": total_count,
+                "total_items": total_count,
                 "limit": limit,
                 "has_next": page < total_pages,
                 "has_prev": page > 1
