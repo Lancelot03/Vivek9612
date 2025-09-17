@@ -1136,6 +1136,65 @@ async def refresh_dashboard_totals():
 
 # ================== END SPRINT 2 ROUTES ==================
 
+# ================== CAB ALLOCATION ROUTES ==================
+
+@api_router.post("/cab-allocations/upload")
+async def upload_cab_allocations(file: UploadFile = File(...)):
+    """Upload cab allocation CSV"""
+    try:
+        if not file.filename.endswith(('.csv', '.xlsx')):
+            raise HTTPException(status_code=400, detail="File must be CSV or Excel format")
+        
+        contents = await file.read()
+        
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(contents))
+        else:
+            df = pd.read_excel(io.BytesIO(contents))
+        
+        # Validate required columns
+        required_columns = ['Cab Number', 'Employee ID', 'Pickup Location', 'Time']
+        if not all(col in df.columns for col in required_columns):
+            raise HTTPException(status_code=400, detail=f"CSV must contain columns: {required_columns}")
+        
+        # Clear existing allocations
+        await db.cab_allocations.delete_many({})
+        
+        # Group by cab number
+        cab_groups = df.groupby('Cab Number')
+        allocations = []
+        
+        for cab_num, group in cab_groups:
+            allocation = CabAllocation(
+                cabNumber=int(cab_num),
+                assignedMembers=group['Employee ID'].astype(str).tolist(),
+                pickupLocation=str(group.iloc[0]['Pickup Location']),
+                pickupTime=str(group.iloc[0]['Time'])
+            )
+            allocations.append(allocation.dict())
+        
+        result = await db.cab_allocations.insert_many(allocations)
+        
+        return {"message": f"Successfully uploaded {len(allocations)} cab allocations", "inserted_count": len(result.inserted_ids)}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error uploading cab allocations: {str(e)}")
+
+@api_router.get("/cab-allocations/{employee_id}")
+async def get_cab_allocation(employee_id: str):
+    """Get cab allocation for specific employee"""
+    allocation = await db.cab_allocations.find_one({"assignedMembers": employee_id})
+    if not allocation:
+        return {"message": "No cab allocation found"}
+    
+    return CabAllocation(**convert_objectid(allocation))
+
+@api_router.get("/cab-allocations")
+async def get_all_cab_allocations():
+    """Get all cab allocations"""
+    allocations = await db.cab_allocations.find().to_list(1000)
+    return [CabAllocation(**convert_objectid(allocation)) for allocation in allocations]
+
 @api_router.post("/cab-allocations/upload")
 async def upload_cab_allocations(file: UploadFile = File(...)):
     """Upload cab allocation CSV"""
