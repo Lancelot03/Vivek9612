@@ -240,10 +240,10 @@ class ExcelExportService:
                 "excel_data": excel_base64,
                 "filename": filename,
                 "summary": {
-                    "total_responses": total_responses,
-                    "accommodation_requests": accommodation_yes,
-                    "food_preferences": dict(food_counts),
-                    "project_breakdown": dict(project_counts),
+                    "total_responses": int(total_responses),
+                    "accommodation_requests": int(accommodation_yes),
+                    "food_preferences": {str(k): int(v) for k, v in food_counts.items()},
+                    "project_breakdown": {str(k): int(v) for k, v in project_counts.items()},
                     "sheets_created": ["All Responses", "Accommodation Analysis", "Food Preferences", "Project Breakdown"]
                 }
             }
