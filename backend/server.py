@@ -336,14 +336,66 @@ async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
         # Even if token verification fails, we'll allow logout
         return {"message": "Logged out successfully"}
 
-@api_router.get("/auth/status")
-async def auth_status():
-    """Check authentication status - updated for new auth system"""
-    return {
-        "authenticated": True, 
-        "auth_type": "employee_code",
-        "message": "JWT-based authentication with employee codes is active"
-    }
+# ================== INITIAL ADMIN SETUP ROUTE ==================
+
+@api_router.post("/auth/create-admin")
+async def create_initial_admin():
+    """Create initial admin user for testing - should be secured in production"""
+    try:
+        # Check if admin already exists
+        existing_admin = await db.users.find_one({"role": "admin"})
+        if existing_admin:
+            return {"message": "Admin user already exists", "admin_exists": True}
+        
+        # Create admin user
+        admin_data = {
+            "employeeId": "ADMIN001",
+            "employeeName": "System Administrator",
+            "email": "admin@jakson.com",
+            "password": auth_service.hash_password("admin123"),
+            "role": "admin",
+            "isFirstLogin": False,
+            "mustChangePassword": False,
+            "officeType": "Head Office",
+            "createdAt": datetime.utcnow(),
+            "lastLogin": None,
+            "isActive": True,
+            "permissions": [
+                "manage_invitees",
+                "manage_responses", 
+                "manage_agenda",
+                "manage_gallery",
+                "manage_cab_allocations",
+                "export_data",
+                "view_analytics"
+            ]
+        }
+        
+        await db.users.insert_one(admin_data)
+        
+        # Also create in invitees table for compatibility
+        admin_invitee = {
+            "employeeId": "ADMIN001",
+            "employeeName": "System Administrator",
+            "cadre": "Administrator",
+            "projectName": "PM Connect 3.0",
+            "hasResponded": True
+        }
+        
+        await db.invitees.insert_one(admin_invitee)
+        
+        return {
+            "message": "Initial admin user created successfully",
+            "admin_id": "ADMIN001",
+            "password": "admin123",
+            "note": "Please change the password after first login"
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create admin user: {str(e)}"
+        )
 
 # ================== INVITEE MANAGEMENT ROUTES ==================
 
