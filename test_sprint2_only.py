@@ -42,7 +42,8 @@ class Sprint2Tester:
             
             if response.status_code == 200:
                 data = response.json()
-                if 'excel_data' in data and 'export_id' in data:
+                download_info = data.get('download_info', {})
+                if 'excel_data' in download_info and 'export_id' in data:
                     summary = data.get('summary', {})
                     self.log_test("Advanced Responses Export", True, 
                                 f"Export created with {summary.get('total_responses', 0)} responses, "
