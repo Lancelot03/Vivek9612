@@ -74,6 +74,10 @@ class ResponseCreate(BaseModel):
     arrivalDate: Optional[date] = None
     departureDate: Optional[date] = None
     foodPreference: str  # 'Veg', 'Non-Veg', 'Not Required'
+    # Sprint 3: Flight Time Preferences
+    departureTimePreference: Optional[str] = None  # 'Morning', 'Afternoon', 'Evening', 'No Preference'
+    arrivalTimePreference: Optional[str] = None    # 'Morning', 'Afternoon', 'Evening', 'No Preference'
+    specialFlightRequirements: Optional[str] = None  # Additional flight-related notes
 
 class Response(BaseModel):
     responseId: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -84,6 +88,10 @@ class Response(BaseModel):
     departureDate: Optional[date] = None
     foodPreference: str
     submissionTimestamp: datetime = Field(default_factory=datetime.utcnow)
+    # Sprint 3: Flight Time Preferences
+    departureTimePreference: Optional[str] = None
+    arrivalTimePreference: Optional[str] = None
+    specialFlightRequirements: Optional[str] = None
 
 class GalleryPhoto(BaseModel):
     photoId: str = Field(default_factory=lambda: str(uuid.uuid4()))
