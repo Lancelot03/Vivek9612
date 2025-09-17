@@ -25,6 +25,10 @@ export default function RSVPForm() {
   const [arrivalDate, setArrivalDate] = useState('');
   const [departureDate, setDepartureDate] = useState('');
   const [foodPreference, setFoodPreference] = useState('');
+  // Sprint 3: Flight Time Preferences
+  const [departureTimePreference, setDepartureTimePreference] = useState('');
+  const [arrivalTimePreference, setArrivalTimePreference] = useState('');
+  const [specialFlightRequirements, setSpecialFlightRequirements] = useState('');
   const [loading, setLoading] = useState(false);
 
   const validateForm = () => {
