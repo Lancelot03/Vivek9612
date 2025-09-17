@@ -120,10 +120,230 @@ def convert_objectid(data):
 
 # ================== AUTHENTICATION ROUTES ==================
 
+class LoginRequest(BaseModel):
+    employeeCode: str
+    password: str
+
+class ChangePasswordRequest(BaseModel):
+    employeeCode: str
+    oldPassword: str
+    newPassword: str
+
+class SetOfficeTypeRequest(BaseModel):
+    employeeCode: str
+    officeType: str
+
+class UserResponse(BaseModel):
+    employeeId: str
+    employeeName: str
+    cadre: str
+    projectName: str
+    role: str
+    isFirstLogin: bool
+    mustChangePassword: bool
+    officeType: Optional[str]
+    permissions: List[str]
+
+@api_router.post("/auth/login")
+async def login(login_data: LoginRequest):
+    """Authenticate user with employee code and password"""
+    try:
+        # Authenticate user
+        user = await auth_service.authenticate_user(
+            login_data.employeeCode, 
+            login_data.password
+        )
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid employee code or password"
+            )
+        
+        # Get user permissions
+        permissions = await auth_service.get_user_permissions(user["employeeId"])
+        
+        # Create access token
+        token_data = {
+            "sub": user["employeeId"],
+            "role": user["role"],
+            "permissions": permissions
+        }
+        access_token = auth_service.create_access_token(token_data)
+        
+        # Log login activity
+        await auth_service.log_user_activity(
+            user["employeeId"], 
+            "login", 
+            {"login_time": datetime.utcnow().isoformat()}
+        )
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "employeeId": user["employeeId"],
+                "employeeName": user["employeeName"],
+                "cadre": user.get("cadre", ""),
+                "projectName": user.get("projectName", ""),
+                "role": user["role"],
+                "isFirstLogin": user.get("isFirstLogin", False),
+                "mustChangePassword": user.get("mustChangePassword", False),
+                "officeType": user.get("officeType"),
+                "permissions": permissions
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Login failed: {str(e)}"
+        )
+
+@api_router.post("/auth/change-password")
+async def change_password(password_data: ChangePasswordRequest):
+    """Change user password"""
+    try:
+        success = await auth_service.change_password(
+            password_data.employeeCode,
+            password_data.oldPassword,
+            password_data.newPassword
+        )
+        
+        if success:
+            # Log password change activity
+            await auth_service.log_user_activity(
+                password_data.employeeCode, 
+                "password_changed"
+            )
+            
+            return {"message": "Password changed successfully"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to change password"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Password change failed: {str(e)}"
+        )
+
+@api_router.post("/auth/set-office-type")
+async def set_office_type(office_data: SetOfficeTypeRequest):
+    """Set user's office type during first login"""
+    try:
+        success = await auth_service.set_office_type(
+            office_data.employeeCode,
+            office_data.officeType
+        )
+        
+        if success:
+            # Log office type setting
+            await auth_service.log_user_activity(
+                office_data.employeeCode, 
+                "office_type_set",
+                {"office_type": office_data.officeType}
+            )
+            
+            return {"message": "Office type set successfully"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to set office type: {str(e)}"
+        )
+
+@api_router.get("/auth/me")
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current authenticated user information"""
+    try:
+        # Verify token
+        payload = auth_service.verify_access_token(credentials.credentials)
+        employee_id = payload.get("sub")
+        
+        if not employee_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token"
+            )
+        
+        # Get user from database
+        user = await db.users.find_one({"employeeId": employee_id})
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Get current permissions
+        permissions = await auth_service.get_user_permissions(employee_id)
+        
+        return {
+            "employeeId": user["employeeId"],
+            "employeeName": user["employeeName"],
+            "cadre": user.get("cadre", ""),
+            "projectName": user.get("projectName", ""),
+            "role": user["role"],
+            "isFirstLogin": user.get("isFirstLogin", False),
+            "mustChangePassword": user.get("mustChangePassword", False),
+            "officeType": user.get("officeType"),
+            "permissions": permissions,
+            "lastLogin": user.get("lastLogin")
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token verification failed"
+        )
+
+@api_router.post("/auth/logout")
+async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Logout user and invalidate token"""
+    try:
+        # Verify token to get user info
+        payload = auth_service.verify_access_token(credentials.credentials)
+        employee_id = payload.get("sub")
+        
+        if employee_id:
+            # Log logout activity
+            await auth_service.log_user_activity(
+                employee_id, 
+                "logout",
+                {"logout_time": datetime.utcnow().isoformat()}
+            )
+        
+        # In a production system, you'd add the token to a blacklist
+        # For now, we'll just confirm the logout
+        return {"message": "Logged out successfully"}
+        
+    except Exception as e:
+        # Even if token verification fails, we'll allow logout
+        return {"message": "Logged out successfully"}
+
 @api_router.get("/auth/status")
 async def auth_status():
-    """Check authentication status"""
-    return {"authenticated": False, "message": "Emergent OAuth not yet implemented"}
+    """Check authentication status - updated for new auth system"""
+    return {
+        "authenticated": True, 
+        "auth_type": "employee_code",
+        "message": "JWT-based authentication with employee codes is active"
+    }
 
 # ================== INVITEE MANAGEMENT ROUTES ==================
 
