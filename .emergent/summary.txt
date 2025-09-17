@@ -1,0 +1,98 @@
+<analysis>
+The AI engineer successfully built the PM Connect 3.0 app from scratch, adhering to mobile-first principles. Initial setup included a FastAPI backend with MongoDB and an Expo/React Native frontend. Core functionalities like invitee RSVP, event information, gallery, and basic admin features (uploading invitees, viewing responses) were implemented. Backend testing identified and fixed a date serialization issue. The engineer then addressed user feedback, fixing the admin portal login, implementing navigation to various admin sections, and changing the app's theme from red to blue. A logout button issue was also resolved. Subsequently, the user provided a multi-sprint enhancement roadmap. The AI engineer has completed **Sprint 0 (Foundation)**, which involved upgrading Expo SDK to 54 and integrating Cloudinary for CDN-based media management. **Sprint 1 (Authentication & RBAC)** was also fully completed, establishing a robust JWT-based authentication system for both admin and invitee roles, including login, password changes, and office type selection screens. The project is currently at the beginning of **Sprint 2 (Data Management)**, starting with enhanced CSV import validation.
+</analysis>
+
+<product_requirements>
+The PM Connect 3.0 app aims to streamline event management for PM Connect series, automating logistical information collection and providing admin tools. It supports two personas: Admin (manages event details, invitees, responses, and exports data) and Invitee (RSVP, provide logistics, view info, interact with gallery).
+
+**Initial Core Features Implemented:**
+- **Database**: Invitees, Responses, GalleryPhotos, Agendas, CabAllocations tables.
+- **Admin Portal**: Dashboard (metrics), Invitee Management (bulk upload CSV, view), Response Management (view, export to Excel), Agenda Management (upload PDF), Gallery Management (view/delete photos), Cab Allocation (upload CSV). Admin authentication via Emergent-based Google social login (though initially a direct admin login was implemented and fixed).
+- **Invitee Portal**: Login (select name), RSVP Form (mobile number, accommodation, dates, food preference), Event Information (agenda, cab details), Gallery (view, upload 2 photos for PM Connect 3.0).
+- **UI/UX**: Modern, clean design with a requested blue color palette, responsive, mobile-first, clear hierarchy, success/error messages. File storage is local on the server.
+
+**Enhancement Roadmap (Sprints 0-5):**
+- **Sprint 0 (Foundation)**: SDK/runtime upgrade (Expo SDK 53 -> latest), Media/CDN infra (Cloudinary/S3 for image/video optimization).
+- **Sprint 1 (Security & Roles)**: Authentication & RBAC (Employee Code login, force password change, admin directory, audit log, role-based dashboards), Admin editing & audit history.
+- **Sprint 2 (Data Import/Export & Integrity)**: CSV/Excel import (validation, error display), Response integrity (recompute totals), Excel export (.xlsx, batching), Refresh & export actions (progress indicators).
+- **Sprint 3 (Logistics & User Data)**: Cab logistics UI (EmployeeID-Name join), Flight time preferences (conditional fields), Capacity (~100 concurrent users), User profile (Head Office/Site Office).
+- **Sprint 4 (Content & UX)**: Feedback module, Gallery management (admin uploads for 1.0/2.0, user limit 4, CDN), Teaser video (HLS streaming), Branding & UI (Jakson branding, logo replacement).
+- **Sprint 5 (Messaging & Docs)**: WhatsApp integration (Cloud API), Agenda & booklets (Safety/Quality, downloadable), Logout & toasts.
+</product_requirements>
+
+<key_technical_concepts>
+- **Full-stack**: Expo (React Native) frontend, FastAPI backend, MongoDB database.
+- **Mobile-First**: Responsive UI/UX with  for navigation.
+- **Authentication**: JWT-based, Emergent Google OAuth (planned for admin, currently employee code), SHA256 password hashing, RBAC.
+- **Media Management**: Cloudinary CDN for scalable storage, image optimization, HLS video streaming.
+- **State Management**:  (implied from guidelines).
+- **Forms**:  (implied from guidelines).
+- **Data Handling**: CSV/Excel import/export.
+</key_technical_concepts>
+
+<code_architecture>
+
+
+**Codebase Structure and Key Files:**
+
+- : The main FastAPI application. This file has been extensively modified. Initially, it set up basic API endpoints for invitees, responses, gallery, agenda, and cab allocations. Recent changes include integration of Cloudinary for media uploads, new endpoints for CDN-powered image/video delivery, and all authentication routes () for login, password change, office type selection, user info (), and admin creation. It relies on the services for specific logic.
+
+- : A newly created service responsible for handling JWT token generation, password hashing (SHA256), and core authentication logic. It defines functions for user login, password verification, and token creation, centralizing security aspects.
+
+- : A new service for Cloudinary integration. It handles uploading images and videos to Cloudinary, managing public IDs, and retrieving optimized media URLs. This replaces the initial base64 image storage approach.
+
+- : A newly created service, marking the start of Sprint 2. This file is intended to house logic for validating CSV/Excel imports, ensuring data integrity.
+
+- : The initial entry point and home screen. This was updated to direct users based on authentication status (e.g., to login screen or relevant dashboard) and initially contained admin login, which was later modified to directly navigate to the admin dashboard for initial testing purposes, then updated with AuthContext.
+
+- : A critical Expo Router layout file. This file was created to wrap the entire application with , enabling global authentication state management and conditional routing based on user authentication status and roles. It ensures that unauthenticated users are redirected to the login screen.
+
+- : The invitee RSVP form. It collects mobile number, accommodation preference (with conditional date pickers), and food preference. The styling was updated to the blue theme.
+
+- : Displays event agenda (PDF) and cab details for the invitee. Styling updated to blue.
+
+- : Invitee-facing gallery to view photos (categorized by event version) and upload photos for PM Connect 3.0. Styling updated to blue.
+
+- : The main admin dashboard. It displays key metrics (total invitees, RSVP count, food preferences) and provides navigation to other admin management sections. It also contains the logout button logic, which was recently fixed and styled. Its color scheme was updated to blue.
+
+- : Admin interface for bulk uploading CSV/Excel files of invitees and viewing a searchable/sortable list of all invitees.
+
+- : Admin interface to view all invitee responses and export them to an Excel file.
+
+- : Admin interface to upload and manage PDF event agendas.
+
+- : Admin interface to view and manage (delete) photos uploaded by users, categorized by event version.
+
+- : Admin interface to upload and manage cab allocation lists.
+
+- : The dedicated login screen for employees.
+
+- : Screen for users to change their password, specifically forced on first login.
+
+- : Screen for users to select their office type (Head Office/Site Office) during their first login.
+
+- : React Context for managing the global authentication state, user information, and authentication-related functions (login, logout, register).
+
+- : Frontend service for interacting with the backend authentication API endpoints, handling JWT token storage (using ) and retrieval.
+
+- : Frontend service for interacting with the backend Cloudinary-powered endpoints for media uploads and retrieval.
+</code_architecture>
+
+<pending_tasks>
+- **Sprint 2 (Remaining)**: Enhanced Excel export with batching and download link, Reliable refresh/export with progress indicators, Response integrity (totals recompute correctly).
+- **Sprint 3 (Logistics & User Data)**: Cab logistics UI (EmployeeID-Name join), Flight time preferences (conditional fields), Capacity (~100 concurrent users), User profile (Head Office/Site Office).
+- **Sprint 4 (Content & UX)**: Feedback module, Admin gallery uploads (PM Connect 1.0 & 2.0), Teaser video (HLS streaming), Branding & UI (Jakson branding, logo replacement).
+- **Sprint 5 (Messaging & Docs)**: WhatsApp integration, Agenda & booklets, Logout & toasts (enhancements).
+</pending_tasks>
+
+<current_work>
+The AI engineer has successfully completed **Sprint 0 (Foundation)**, which included upgrading the Expo SDK from 53 to 54, and integrating Cloudinary for CDN-based media management. This involved setting up  and updating  to use Cloudinary for image and video uploads, replacing base64 storage. It also created .
+
+Additionally, **Sprint 1 (Security & Roles - Authentication & RBAC)** has been fully completed. This involved creating a robust JWT-based authentication system. On the backend,  was implemented for JWT handling, password hashing, and login logic, with  updated to include all authentication endpoints (, , , , , ). Frontend implementation included  for global state,  for API interaction, and dedicated screens in  for , , and . The main application layout () was updated to integrate the  and handle conditional routing based on authentication status. A test admin user (/) was created to verify the login flow.
+
+Currently, the AI engineer has just begun **Sprint 2 (Data Management)**, specifically starting with Enhanced CSV import with validation, data integrity checks, advanced Excel export. The initial step in this sprint was the creation of the  file, which will house the backend logic for validating incoming data from CSV/Excel imports. The last action taken was about to create an advanced Excel export service.
+</current_work>
+
+<optional_next_step>
+The next step is to create the advanced Excel export service, as requested by the user's Sprint 2 plan.
+</optional_next_step>
