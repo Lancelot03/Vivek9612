@@ -38,6 +38,8 @@ data_validation_service = DataValidationService(db)
 excel_export_service = ExcelExportService(db)
 performance_service = PerformanceService(db)
 feedback_service = FeedbackService(db)
+whatsapp_service = WhatsAppService(db)
+document_service = DocumentService(db)
 
 # Create the main app without a prefix
 app = FastAPI(title="PM Connect 3.0 API")
