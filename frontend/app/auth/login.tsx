@@ -29,11 +29,6 @@ export default function LoginScreen() {
       return false;
     }
 
-    if (employeeCode.trim().length < 3) {
-      Alert.alert('Error', 'Employee code must be at least 3 characters');
-      return false;
-    }
-
     return true;
   };
 
