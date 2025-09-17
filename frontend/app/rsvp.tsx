@@ -241,6 +241,95 @@ export default function RSVPForm() {
                     placeholder="YYYY-MM-DD"
                   />
                 </View>
+
+                {/* Flight Time Preferences - Sprint 3 */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Preferred Departure Time</Text>
+                  <Text style={styles.inputHint}>Select your preferred flight departure time</Text>
+                  <View style={styles.flightPreferenceGroup}>
+                    {[
+                      { value: 'Morning', label: 'Morning (6AM-12PM)' },
+                      { value: 'Afternoon', label: 'Afternoon (12PM-6PM)' },
+                      { value: 'Evening', label: 'Evening (6PM-12AM)' },
+                      { value: 'No Preference', label: 'No Preference' }
+                    ].map((option) => (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[
+                          styles.flightOption,
+                          departureTimePreference === option.value && styles.flightOptionSelected,
+                        ]}
+                        onPress={() => setDepartureTimePreference(option.value)}
+                      >
+                        <View
+                          style={[
+                            styles.radioCircle,
+                            departureTimePreference === option.value && styles.radioCircleSelected,
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.flightOptionText,
+                            departureTimePreference === option.value && styles.flightOptionTextSelected,
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Preferred Arrival Time</Text>
+                  <Text style={styles.inputHint}>Select your preferred flight arrival time</Text>
+                  <View style={styles.flightPreferenceGroup}>
+                    {[
+                      { value: 'Morning', label: 'Morning (6AM-12PM)' },
+                      { value: 'Afternoon', label: 'Afternoon (12PM-6PM)' },
+                      { value: 'Evening', label: 'Evening (6PM-12AM)' },
+                      { value: 'No Preference', label: 'No Preference' }
+                    ].map((option) => (
+                      <TouchableOpacity
+                        key={option.value}
+                        style={[
+                          styles.flightOption,
+                          arrivalTimePreference === option.value && styles.flightOptionSelected,
+                        ]}
+                        onPress={() => setArrivalTimePreference(option.value)}
+                      >
+                        <View
+                          style={[
+                            styles.radioCircle,
+                            arrivalTimePreference === option.value && styles.radioCircleSelected,
+                          ]}
+                        />
+                        <Text
+                          style={[
+                            styles.flightOptionText,
+                            arrivalTimePreference === option.value && styles.flightOptionTextSelected,
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Special Flight Requirements</Text>
+                  <Text style={styles.inputHint}>Any special requirements or preferences (optional)</Text>
+                  <TextInput
+                    style={[styles.textInput, styles.textArea]}
+                    value={specialFlightRequirements}
+                    onChangeText={setSpecialFlightRequirements}
+                    placeholder="e.g., Wheelchair assistance, dietary restrictions, seat preference..."
+                    multiline={true}
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </View>
               </>
             )}
 
