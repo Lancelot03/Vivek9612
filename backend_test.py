@@ -408,6 +408,247 @@ startxref
         except Exception as e:
             self.log_test("Auth Status", False, f"Exception: {str(e)}")
     
+    # ================== SPRINT 2: ENHANCED DATA MANAGEMENT TESTS ==================
+    
+    def test_enhanced_invitee_upload(self):
+        """Test enhanced invitee CSV upload with validation"""
+        try:
+            # Test with valid CSV
+            csv_data = self.create_sample_invitees_csv()
+            files = {'file': ('invitees_enhanced.csv', csv_data, 'text/csv')}
+            
+            response = self.session.post(f"{BASE_URL}/invitees/bulk-upload-enhanced", files=files)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success'):
+                    self.log_test("Enhanced Invitee Upload (Valid)", True, 
+                                f"Uploaded {data.get('inserted_count', 0)} invitees with {data.get('warnings', 0)} warnings", data)
+                else:
+                    self.log_test("Enhanced Invitee Upload (Valid)", False, 
+                                f"Upload failed: {data.get('message', 'Unknown error')}")
+            else:
+                self.log_test("Enhanced Invitee Upload (Valid)", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Enhanced Invitee Upload (Valid)", False, f"Exception: {str(e)}")
+    
+    def test_enhanced_invitee_upload_invalid(self):
+        """Test enhanced invitee CSV upload with invalid data"""
+        try:
+            # Create invalid CSV (missing required columns)
+            invalid_data = {
+                'Employee ID': ['EMP001', 'EMP002'],
+                'Name': ['John Doe', 'Jane Smith'],  # Wrong column name
+                # Missing 'Employee Name', 'Cadre', 'Project Name'
+            }
+            df = pd.DataFrame(invalid_data)
+            csv_buffer = io.StringIO()
+            df.to_csv(csv_buffer, index=False)
+            csv_data = csv_buffer.getvalue().encode('utf-8')
+            
+            files = {'file': ('invalid_invitees.csv', csv_data, 'text/csv')}
+            
+            response = self.session.post(f"{BASE_URL}/invitees/bulk-upload-enhanced", files=files)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if not data.get('success') and data.get('validation_result', {}).get('errors'):
+                    self.log_test("Enhanced Invitee Upload (Invalid)", True, 
+                                f"Correctly rejected invalid data with {len(data['validation_result']['errors'])} errors", 
+                                {"validation_passed": True})
+                else:
+                    self.log_test("Enhanced Invitee Upload (Invalid)", False, 
+                                "Should have rejected invalid data but didn't")
+            else:
+                self.log_test("Enhanced Invitee Upload (Invalid)", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Enhanced Invitee Upload (Invalid)", False, f"Exception: {str(e)}")
+    
+    def test_enhanced_cab_upload(self):
+        """Test enhanced cab allocation CSV upload with validation"""
+        try:
+            csv_data = self.create_sample_cab_csv()
+            files = {'file': ('cab_enhanced.csv', csv_data, 'text/csv')}
+            
+            response = self.session.post(f"{BASE_URL}/cab-allocations/upload-enhanced", files=files)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success'):
+                    self.log_test("Enhanced Cab Upload", True, 
+                                f"Uploaded {data.get('inserted_count', 0)} cab allocations with {data.get('warnings', 0)} warnings", data)
+                else:
+                    self.log_test("Enhanced Cab Upload", False, 
+                                f"Upload failed: {data.get('message', 'Unknown error')}")
+            else:
+                self.log_test("Enhanced Cab Upload", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Enhanced Cab Upload", False, f"Exception: {str(e)}")
+    
+    def test_advanced_responses_export(self):
+        """Test advanced responses export with multiple sheets"""
+        try:
+            response = self.session.post(f"{BASE_URL}/exports/responses/advanced")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'excel_data' in data and 'export_id' in data:
+                    summary = data.get('summary', {})
+                    self.log_test("Advanced Responses Export", True, 
+                                f"Export created with {summary.get('total_responses', 0)} responses, "
+                                f"{len(summary.get('sheets_created', []))} sheets", 
+                                {"export_id": data['export_id'], "has_data": True})
+                else:
+                    self.log_test("Advanced Responses Export", False, "Missing excel_data or export_id in response")
+            else:
+                self.log_test("Advanced Responses Export", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Advanced Responses Export", False, f"Exception: {str(e)}")
+    
+    def test_invitees_status_export(self):
+        """Test invitees status export"""
+        try:
+            response = self.session.post(f"{BASE_URL}/exports/invitees/status")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'excel_data' in data and 'export_id' in data:
+                    summary = data.get('summary', {})
+                    self.log_test("Invitees Status Export", True, 
+                                f"Export created with {summary.get('total_invitees', 0)} invitees, "
+                                f"{summary.get('responded', 0)} responded", 
+                                {"export_id": data['export_id'], "has_data": True})
+                else:
+                    self.log_test("Invitees Status Export", False, "Missing excel_data or export_id in response")
+            else:
+                self.log_test("Invitees Status Export", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Invitees Status Export", False, f"Exception: {str(e)}")
+    
+    def test_cab_allocations_export(self):
+        """Test cab allocations export"""
+        try:
+            response = self.session.post(f"{BASE_URL}/exports/cab-allocations")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'excel_data' in data and 'export_id' in data:
+                    summary = data.get('summary', {})
+                    self.log_test("Cab Allocations Export", True, 
+                                f"Export created with {summary.get('total_cabs', 0)} cabs, "
+                                f"{summary.get('total_members', 0)} members", 
+                                {"export_id": data['export_id'], "has_data": True})
+                    return data['export_id']
+                else:
+                    self.log_test("Cab Allocations Export", False, "Missing excel_data or export_id in response")
+                    return None
+            else:
+                self.log_test("Cab Allocations Export", False, f"HTTP {response.status_code}: {response.text}")
+                return None
+                
+        except Exception as e:
+            self.log_test("Cab Allocations Export", False, f"Exception: {str(e)}")
+            return None
+    
+    def test_export_progress(self, export_id):
+        """Test export progress tracking"""
+        if not export_id:
+            self.log_test("Export Progress Tracking", False, "No export ID provided")
+            return
+            
+        try:
+            response = self.session.get(f"{BASE_URL}/exports/progress/{export_id}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'status' in data:
+                    self.log_test("Export Progress Tracking", True, 
+                                f"Progress retrieved: {data.get('status')} - {data.get('current_step', 'N/A')}", data)
+                else:
+                    self.log_test("Export Progress Tracking", False, "Missing status in response")
+            elif response.status_code == 404:
+                self.log_test("Export Progress Tracking", True, "Export not found (expected for completed exports)", {"status": "not_found"})
+            else:
+                self.log_test("Export Progress Tracking", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Export Progress Tracking", False, f"Exception: {str(e)}")
+    
+    def test_data_integrity_check(self):
+        """Test data integrity checking"""
+        try:
+            response = self.session.get(f"{BASE_URL}/data/integrity-check")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'report' in data:
+                    report = data['report']
+                    status = report.get('overall_status', 'unknown')
+                    issues_count = len(report.get('issues', []))
+                    checks_count = len(report.get('checks', []))
+                    
+                    self.log_test("Data Integrity Check", True, 
+                                f"Integrity check completed: {status} status, {checks_count} checks, {issues_count} issues", 
+                                {"status": status, "issues": issues_count})
+                else:
+                    self.log_test("Data Integrity Check", False, "Missing report in response")
+            else:
+                self.log_test("Data Integrity Check", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Data Integrity Check", False, f"Exception: {str(e)}")
+    
+    def test_fix_data_integrity(self):
+        """Test automatic data integrity fixing"""
+        try:
+            response = self.session.post(f"{BASE_URL}/data/fix-integrity")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'report' in data:
+                    report = data['report']
+                    fixes_count = len(report.get('fixes_applied', []))
+                    success = report.get('success', False)
+                    
+                    self.log_test("Fix Data Integrity", True, 
+                                f"Integrity fixes applied: {fixes_count} fixes, success: {success}", 
+                                {"fixes": fixes_count, "success": success})
+                else:
+                    self.log_test("Fix Data Integrity", False, "Missing report in response")
+            else:
+                self.log_test("Fix Data Integrity", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Fix Data Integrity", False, f"Exception: {str(e)}")
+    
+    def test_refresh_dashboard_totals(self):
+        """Test dashboard totals refresh"""
+        try:
+            response = self.session.post(f"{BASE_URL}/data/refresh-totals")
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'updated_stats' in data:
+                    stats = data['updated_stats']
+                    fixes = data.get('fixes_applied', {})
+                    
+                    self.log_test("Refresh Dashboard Totals", True, 
+                                f"Totals refreshed: {stats.get('totalInvitees', 0)} invitees, "
+                                f"{stats.get('totalResponses', 0)} responses", 
+                                {"stats": stats, "fixes": fixes})
+                else:
+                    self.log_test("Refresh Dashboard Totals", False, "Missing updated_stats in response")
+            else:
+                self.log_test("Refresh Dashboard Totals", False, f"HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Refresh Dashboard Totals", False, f"Exception: {str(e)}")
+
     def run_all_tests(self):
         """Run comprehensive test suite"""
         print("=" * 80)
@@ -465,6 +706,32 @@ startxref
         self.test_upload_cab_allocations()
         self.test_get_cab_allocation()
         self.test_get_all_cab_allocations()
+        print()
+        
+        # ================== SPRINT 2 TESTS ==================
+        print("🚀 SPRINT 2: ENHANCED DATA MANAGEMENT TESTS")
+        print("-" * 40)
+        
+        # Enhanced CSV Import Tests
+        print("📊 Enhanced CSV Import with Validation:")
+        self.test_enhanced_invitee_upload()
+        self.test_enhanced_invitee_upload_invalid()
+        self.test_enhanced_cab_upload()
+        print()
+        
+        # Advanced Excel Export Tests
+        print("📈 Advanced Excel Export Service:")
+        self.test_advanced_responses_export()
+        self.test_invitees_status_export()
+        export_id = self.test_cab_allocations_export()
+        self.test_export_progress(export_id)
+        print()
+        
+        # Data Integrity Management Tests
+        print("🔧 Data Integrity Management:")
+        self.test_data_integrity_check()
+        self.test_fix_data_integrity()
+        self.test_refresh_dashboard_totals()
         print()
         
         # Summary
