@@ -118,8 +118,8 @@ class ExcelExportService:
                     "Arrival Date": response.get("arrivalDate", ""),
                     "Departure Date": response.get("departureDate", ""),
                     "Food Preference": response.get("foodPreference", ""),
-                    "Submission Date": response.get("submissionTimestamp", "").split('T')[0] if response.get("submissionTimestamp") else "",
-                    "Submission Time": response.get("submissionTimestamp", "").split('T')[1].split('.')[0] if response.get("submissionTimestamp") else ""
+                    "Submission Date": response.get("submissionTimestamp").strftime('%Y-%m-%d') if response.get("submissionTimestamp") else "",
+                    "Submission Time": response.get("submissionTimestamp").strftime('%H:%M:%S') if response.get("submissionTimestamp") else ""
                 }
                 enriched_responses.append(enriched_response)
             
