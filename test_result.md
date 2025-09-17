@@ -270,6 +270,42 @@ backend:
         - agent: "testing"
         - comment: "Data integrity management working perfectly. GET /api/data/integrity-check performs comprehensive data validation with 4 checks (Invitee-Response Consistency, Food Preference Totals, Cab Assignment Duplicates, Orphaned Data Check). POST /api/data/fix-integrity automatically fixes common issues like response flag synchronization and duplicate cab assignments. POST /api/data/refresh-totals recomputes dashboard statistics and fixes data inconsistencies. All endpoints provide detailed reports of issues found and fixes applied."
 
+  - task: "Sprint 3 - Flight Time Preferences"
+    implemented: true
+    working: "NA"
+    file: "server.py, app/rsvp.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "Implemented flight time preferences for accommodation requests with conditional UI fields (departure/arrival time preferences, special requirements). Updated Response model, API endpoints, Excel exports, and RSVP form with professional UI styling."
+
+  - task: "Sprint 3 - Enhanced User Profile Management"
+    implemented: true
+    working: "NA"
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "Implemented comprehensive user profile management with endpoints /api/profile/{employee_id} for viewing and updating user profiles including office type, contact details, and RSVP status integration"
+
+  - task: "Sprint 3 - Enhanced Cab Logistics with Name Resolution"
+    implemented: true
+    working: "NA"
+    file: "server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "Implemented enhanced cab allocation endpoints (/api/cab-allocations/enhanced, /api/cab-allocations/employee/{employee_id}/enhanced) with employee name resolution, response status tracking, and comprehensive member details"
+
 frontend:
   - task: "Home Page with Invitee Selection"
     implemented: true
