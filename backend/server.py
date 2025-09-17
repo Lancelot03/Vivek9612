@@ -352,6 +352,43 @@ async def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
         # Even if token verification fails, we'll allow logout
         return {"message": "Logged out successfully"}
 
+async def get_current_user_optional(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current authenticated user information (optional - returns None if not authenticated)"""
+    try:
+        if not credentials:
+            return None
+            
+        # Verify token
+        payload = auth_service.verify_access_token(credentials.credentials)
+        employee_id = payload.get("sub")
+        
+        if not employee_id:
+            return None
+        
+        # Get user from database
+        user = await db.users.find_one({"employeeId": employee_id})
+        if not user:
+            return None
+        
+        # Get current permissions
+        permissions = await auth_service.get_user_permissions(employee_id)
+        
+        return {
+            "employeeId": user["employeeId"],
+            "employeeName": user["employeeName"],
+            "cadre": user.get("cadre", ""),
+            "projectName": user.get("projectName", ""),
+            "role": user["role"],
+            "isFirstLogin": user.get("isFirstLogin", False),
+            "mustChangePassword": user.get("mustChangePassword", False),
+            "officeType": user.get("officeType"),
+            "permissions": permissions,
+            "lastLogin": user.get("lastLogin")
+        }
+        
+    except Exception:
+        return None
+
 # ================== INITIAL ADMIN SETUP ROUTE ==================
 
 @api_router.post("/auth/create-admin")
