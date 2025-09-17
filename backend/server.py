@@ -324,19 +324,16 @@ async def get_current_agenda():
     
     return Agenda(**convert_objectid(agenda))
 
-# ================== GALLERY ROUTES ==================
+# ================== ENHANCED GALLERY ROUTES WITH CLOUDINARY ==================
 
-@api_router.post("/gallery/upload")
-async def upload_gallery_photo(
+@api_router.post("/gallery/upload-cdn")
+async def upload_gallery_photo_cdn(
     employeeId: str = Form(...),
     eventVersion: str = Form(...),
     file: UploadFile = File(...)
 ):
-    """Upload photo to gallery"""
+    """Upload photo to gallery using Cloudinary CDN"""
     try:
-        if not file.content_type.startswith('image/'):
-            raise HTTPException(status_code=400, detail="File must be an image")
-        
         # Check existing photos for this user in PM Connect 3.0
         if eventVersion == "PM Connect 3.0":
             existing_count = await db.gallery_photos.count_documents({
@@ -346,36 +343,249 @@ async def upload_gallery_photo(
             if existing_count >= 2:
                 raise HTTPException(status_code=400, detail="Maximum 2 photos allowed for PM Connect 3.0")
         
-        contents = await file.read()
-        image_base64 = base64.b64encode(contents).decode('utf-8')
-        
-        photo = GalleryPhoto(
-            employeeId=employeeId,
-            imageBase64=image_base64,
-            eventVersion=eventVersion
+        # Upload to Cloudinary
+        upload_result = await cloudinary_service.upload_image(
+            file,
+            folder=f"pm_connect/gallery/{eventVersion.replace(' ', '_').lower()}",
+            tags=["gallery", eventVersion.replace(' ', '_').lower(), employeeId]
         )
         
-        await db.gallery_photos.insert_one(photo.dict())
+        # Create enhanced photo document
+        photo = {
+            "photoId": str(uuid.uuid4()),
+            "employeeId": employeeId,
+            "cloudinary_public_id": upload_result["public_id"],
+            "imageUrl": upload_result["url"],
+            "imageBase64": "",  # Keep empty for backward compatibility
+            "eventVersion": eventVersion,
+            "uploadTimestamp": datetime.utcnow(),
+            "cdn_metadata": {
+                "width": upload_result["width"],
+                "height": upload_result["height"],
+                "format": upload_result["format"],
+                "bytes": upload_result["bytes"]
+            }
+        }
         
-        return {"message": "Photo uploaded successfully", "photoId": photo.photoId}
-    
+        await db.gallery_photos.insert_one(photo)
+        
+        return {
+            "message": "Photo uploaded successfully to CDN",
+            "photoId": photo["photoId"],
+            "url": upload_result["url"],
+            "metadata": upload_result
+        }
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error uploading photo: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error uploading photo: {str(e)}"
+        )
 
-@api_router.get("/gallery/{event_version}")
-async def get_gallery_photos(event_version: str):
-    """Get photos by event version"""
+@api_router.get("/gallery/cdn/{event_version}")
+async def get_gallery_photos_cdn(event_version: str):
+    """Get photos by event version from CDN"""
     photos = await db.gallery_photos.find({"eventVersion": event_version}).to_list(1000)
-    return [GalleryPhoto(**convert_objectid(photo)) for photo in photos]
+    
+    enhanced_photos = []
+    for photo in photos:
+        # Generate optimized URLs for different sizes
+        if photo.get("cloudinary_public_id"):
+            optimized_urls = {
+                "thumbnail": cloudinary_service.generate_image_url(
+                    photo["cloudinary_public_id"], width=300, height=300, crop="fill"
+                ),
+                "medium": cloudinary_service.generate_image_url(
+                    photo["cloudinary_public_id"], width=800, height=600, crop="limit"
+                ),
+                "full": cloudinary_service.generate_image_url(
+                    photo["cloudinary_public_id"]
+                )
+            }
+            photo["optimized_urls"] = optimized_urls
+        
+        enhanced_photos.append(convert_objectid(photo))
+    
+    return enhanced_photos
 
-@api_router.delete("/gallery/{photo_id}")
-async def delete_gallery_photo(photo_id: str):
-    """Delete a gallery photo"""
-    result = await db.gallery_photos.delete_one({"photoId": photo_id})
-    if result.deleted_count == 0:
+@api_router.delete("/gallery/cdn/{photo_id}")
+async def delete_gallery_photo_cdn(photo_id: str):
+    """Delete a gallery photo from both database and CDN"""
+    
+    # Find the photo first
+    photo = await db.gallery_photos.find_one({"photoId": photo_id})
+    if not photo:
         raise HTTPException(status_code=404, detail="Photo not found")
     
-    return {"message": "Photo deleted successfully"}
+    try:
+        # Delete from Cloudinary if it has a public_id
+        if photo.get("cloudinary_public_id"):
+            cloudinary_service.delete_asset(photo["cloudinary_public_id"], "image")
+        
+        # Delete from database
+        result = await db.gallery_photos.delete_one({"photoId": photo_id})
+        
+        return {
+            "message": "Photo deleted successfully from CDN and database",
+            "deleted": result.deleted_count > 0
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting photo: {str(e)}"
+        )
+
+# ================== ENHANCED AGENDA ROUTES WITH CLOUDINARY ==================
+
+@api_router.post("/agenda/cdn")
+async def upload_agenda_cdn(title: str = Form(...), file: UploadFile = File(...)):
+    """Upload agenda PDF to Cloudinary CDN"""
+    try:
+        if not file.filename.endswith('.pdf'):
+            raise HTTPException(status_code=400, detail="File must be PDF format")
+        
+        # Upload PDF to Cloudinary
+        upload_result = await cloudinary_service.upload_video(  # PDFs use video resource type
+            file,
+            folder="pm_connect/agendas",
+            enable_hls=False,
+            tags=["agenda", "pdf"]
+        )
+        
+        # Remove existing agenda and add new one
+        await db.agendas.delete_many({})
+        
+        agenda = {
+            "agendaId": str(uuid.uuid4()),
+            "agendaTitle": title,
+            "cloudinary_public_id": upload_result["public_id"],
+            "pdfUrl": upload_result["url"],
+            "pdfBase64": "",  # Keep empty for backward compatibility
+            "uploadTimestamp": datetime.utcnow(),
+            "cdn_metadata": {
+                "format": upload_result["format"],
+                "bytes": upload_result["bytes"]
+            }
+        }
+        
+        await db.agendas.insert_one(agenda)
+        
+        return {
+            "message": "Agenda uploaded successfully to CDN",
+            "agendaId": agenda["agendaId"],
+            "url": upload_result["url"]
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error uploading agenda: {str(e)}"
+        )
+
+# ================== VIDEO UPLOAD ROUTES WITH HLS STREAMING ==================
+
+@api_router.post("/video/upload")
+async def upload_video_hls(
+    title: str = Form(...),
+    description: str = Form(""),
+    file: UploadFile = File(...)
+):
+    """Upload video with HLS streaming support"""
+    try:
+        if not file.content_type.startswith('video/'):
+            raise HTTPException(status_code=400, detail="File must be video format")
+        
+        # Upload video with HLS streaming
+        upload_result = await cloudinary_service.upload_video(
+            file,
+            folder="pm_connect/videos",
+            enable_hls=True,
+            tags=["teaser", "video", "hls"]
+        )
+        
+        # Store video metadata
+        video_doc = {
+            "videoId": str(uuid.uuid4()),
+            "title": title,
+            "description": description,
+            "cloudinary_public_id": upload_result["public_id"],
+            "videoUrl": upload_result["url"],
+            "streaming_urls": upload_result["streaming_urls"],
+            "uploadTimestamp": datetime.utcnow(),
+            "metadata": {
+                "duration": upload_result.get("duration"),
+                "width": upload_result["width"],
+                "height": upload_result["height"],
+                "format": upload_result["format"],
+                "bytes": upload_result["bytes"]
+            }
+        }
+        
+        await db.videos.insert_one(video_doc)
+        
+        return {
+            "message": "Video uploaded successfully with HLS streaming",
+            "videoId": video_doc["videoId"],
+            "streaming_urls": upload_result["streaming_urls"],
+            "metadata": upload_result
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error uploading video: {str(e)}"
+        )
+
+@api_router.get("/videos")
+async def get_videos():
+    """Get all uploaded videos"""
+    videos = await db.videos.find().to_list(1000)
+    return [convert_objectid(video) for video in videos]
+
+@api_router.get("/videos/featured")
+async def get_featured_video():
+    """Get the most recent video for dashboard display"""
+    video = await db.videos.find_one(sort=[("uploadTimestamp", -1)])
+    if not video:
+        return {"message": "No videos available"}
+    
+    return convert_objectid(video)
+
+# ================== IMAGE OPTIMIZATION ROUTES ==================
+
+@api_router.get("/image/optimize/{public_id}")
+async def get_optimized_image_url(
+    public_id: str,
+    width: Optional[int] = None,
+    height: Optional[int] = None,
+    quality: str = "auto:good",
+    format: str = "auto",
+    crop: str = "fill"
+):
+    """Generate optimized image URL with transformations"""
+    try:
+        optimized_url = cloudinary_service.generate_image_url(
+            public_id, width, height, crop, quality, format
+        )
+        
+        return {
+            "public_id": public_id,
+            "optimized_url": optimized_url,
+            "transformations": {
+                "width": width,
+                "height": height,
+                "quality": quality,
+                "format": format,
+                "crop": crop
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generating optimized URL: {str(e)}"
+        )
 
 # ================== CAB ALLOCATION ROUTES ==================
 
