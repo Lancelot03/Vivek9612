@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 # Configuration
-BASE_URL = "https://pmconnect.preview.emergentagent.com/api"
+BASE_URL = "https://eventadmin-2.preview.emergentagent.com/api"
 TIMEOUT = 30
 
 class PMConnectTester:
