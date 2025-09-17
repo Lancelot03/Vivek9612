@@ -867,7 +867,274 @@ async def get_optimized_image_url(
             detail=f"Error generating optimized URL: {str(e)}"
         )
 
-# ================== CAB ALLOCATION ROUTES ==================
+# ================== SPRINT 2: ENHANCED DATA MANAGEMENT ROUTES ==================
+
+# Enhanced CSV Import with Validation
+@api_router.post("/invitees/bulk-upload-enhanced")
+async def bulk_upload_invitees_enhanced(file: UploadFile = File(...)):
+    """Enhanced CSV upload with comprehensive validation"""
+    try:
+        if not file.filename.endswith(('.csv', '.xlsx')):
+            raise HTTPException(status_code=400, detail="File must be CSV or Excel format")
+        
+        contents = await file.read()
+        
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(contents))
+        else:
+            df = pd.read_excel(io.BytesIO(contents))
+        
+        # Validate using enhanced validation service
+        validation_result = data_validation_service.validate_invitee_csv(df)
+        
+        if not validation_result.is_valid:
+            return {
+                "success": False,
+                "validation_result": validation_result.dict(),
+                "message": f"Validation failed with {len(validation_result.errors)} errors"
+            }
+        
+        # If validation passed, insert the processed data
+        if validation_result.processed_data:
+            # Clear existing invitees and insert new ones
+            await db.invitees.delete_many({})
+            
+            # Convert processed data to proper format
+            invitees = []
+            for data in validation_result.processed_data:
+                invitee = {
+                    "employeeId": data["employeeId"],
+                    "employeeName": data["employeeName"],
+                    "cadre": data["cadre"],
+                    "projectName": data["projectName"],
+                    "email": data.get("email", ""),
+                    "department": data.get("department", ""),
+                    "phone": data.get("phone", ""),
+                    "hasResponded": False,
+                    "importedAt": datetime.utcnow()
+                }
+                invitees.append(invitee)
+            
+            result = await db.invitees.insert_many(invitees)
+            
+            return {
+                "success": True,
+                "validation_result": validation_result.dict(),
+                "message": f"Successfully uploaded {len(invitees)} invitees",
+                "inserted_count": len(result.inserted_ids),
+                "warnings": len(validation_result.warnings)
+            }
+        else:
+            raise HTTPException(status_code=400, detail="No valid data to import")
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
+@api_router.post("/cab-allocations/upload-enhanced")
+async def upload_cab_allocations_enhanced(file: UploadFile = File(...)):
+    """Enhanced cab allocation upload with validation"""
+    try:
+        if not file.filename.endswith(('.csv', '.xlsx')):
+            raise HTTPException(status_code=400, detail="File must be CSV or Excel format")
+        
+        contents = await file.read()
+        
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(io.BytesIO(contents))
+        else:
+            df = pd.read_excel(io.BytesIO(contents))
+        
+        # Validate using enhanced validation service
+        validation_result = data_validation_service.validate_cab_csv(df)
+        
+        if not validation_result.is_valid:
+            return {
+                "success": False,
+                "validation_result": validation_result.dict(),
+                "message": f"Validation failed with {len(validation_result.errors)} errors"
+            }
+        
+        # If validation passed, process and insert data
+        if validation_result.processed_data:
+            # Clear existing allocations
+            await db.cab_allocations.delete_many({})
+            
+            # Group by cab number
+            cab_groups = {}
+            for data in validation_result.processed_data:
+                cab_num = data["cabNumber"]
+                if cab_num not in cab_groups:
+                    cab_groups[cab_num] = {
+                        "cabId": str(uuid.uuid4()),
+                        "cabNumber": cab_num,
+                        "assignedMembers": [],
+                        "pickupLocation": data["pickupLocation"],
+                        "pickupTime": data["pickupTime"],
+                        "memberDetails": []
+                    }
+                
+                cab_groups[cab_num]["assignedMembers"].append(data["employeeId"])
+                cab_groups[cab_num]["memberDetails"].append({
+                    "employeeId": data["employeeId"],
+                    "employeeName": data.get("employeeName", ""),
+                    "contactNumber": data.get("contactNumber", "")
+                })
+            
+            allocations = list(cab_groups.values())
+            result = await db.cab_allocations.insert_many(allocations)
+            
+            return {
+                "success": True,
+                "validation_result": validation_result.dict(),
+                "message": f"Successfully uploaded {len(allocations)} cab allocations",
+                "inserted_count": len(result.inserted_ids),
+                "warnings": len(validation_result.warnings)
+            }
+        else:
+            raise HTTPException(status_code=400, detail="No valid data to import")
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
+# Advanced Excel Export Routes
+@api_router.post("/exports/responses/advanced")
+async def create_advanced_responses_export(background_tasks: BackgroundTasks, filters: Dict[str, Any] = None):
+    """Create advanced responses export with background processing"""
+    try:
+        result = await excel_export_service.export_responses_advanced()
+        return {
+            "message": "Advanced responses export created successfully",
+            "export_id": result["export_id"],
+            "download_info": {
+                "filename": result["filename"],
+                "excel_data": result["excel_data"]
+            },
+            "summary": result["summary"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+@api_router.post("/exports/invitees/status")
+async def create_invitees_status_export():
+    """Create invitees with status export"""
+    try:
+        result = await excel_export_service.export_invitees_with_status()
+        return {
+            "message": "Invitees status export created successfully",
+            "export_id": result["export_id"],
+            "download_info": {
+                "filename": result["filename"],
+                "excel_data": result["excel_data"]
+            },
+            "summary": result["summary"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+@api_router.post("/exports/cab-allocations")
+async def create_cab_allocations_export():
+    """Create cab allocations export"""
+    try:
+        result = await excel_export_service.export_cab_allocations()
+        return {
+            "message": "Cab allocations export created successfully",
+            "export_id": result["export_id"],
+            "download_info": {
+                "filename": result["filename"],
+                "excel_data": result["excel_data"]
+            },
+            "summary": result["summary"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+@api_router.get("/exports/progress/{export_id}")
+async def get_export_progress(export_id: str):
+    """Get export progress status"""
+    progress = excel_export_service.get_export_progress(export_id)
+    if progress.get("status") == "not_found":
+        raise HTTPException(status_code=404, detail="Export task not found")
+    return progress
+
+# Data Integrity Routes
+@api_router.get("/data/integrity-check")
+async def check_data_integrity():
+    """Perform comprehensive data integrity check"""
+    try:
+        integrity_report = await data_validation_service.check_data_integrity()
+        return {
+            "message": "Data integrity check completed",
+            "report": integrity_report
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Integrity check failed: {str(e)}")
+
+@api_router.post("/data/fix-integrity")
+async def fix_data_integrity():
+    """Automatically fix common data integrity issues"""
+    try:
+        fix_report = await data_validation_service.fix_data_integrity_issues()
+        return {
+            "message": "Data integrity fixes applied",
+            "report": fix_report
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Data fix failed: {str(e)}")
+
+@api_router.post("/data/refresh-totals")
+async def refresh_dashboard_totals():
+    """Refresh and recompute dashboard totals for data consistency"""
+    try:
+        # Recompute all dashboard statistics
+        total_invitees = await db.invitees.count_documents({})
+        total_responses = await db.responses.count_documents({})
+        
+        # Fix response flags
+        responses = await db.responses.find({}, {"employeeId": 1}).to_list(10000)
+        response_employee_ids = {r["employeeId"] for r in responses}
+        
+        # Update hasResponded flag correctly
+        await db.invitees.update_many(
+            {"employeeId": {"$in": list(response_employee_ids)}},
+            {"$set": {"hasResponded": True}}
+        )
+        
+        await db.invitees.update_many(
+            {"employeeId": {"$nin": list(response_employee_ids)}},
+            {"$set": {"hasResponded": False}}
+        )
+        
+        # Recompute stats
+        rsvp_yes = await db.invitees.count_documents({"hasResponded": True})
+        rsvp_no = total_invitees - rsvp_yes
+        accommodation_requests = await db.responses.count_documents({"requiresAccommodation": True})
+        
+        food_prefs = await db.responses.aggregate([
+            {"$group": {"_id": "$foodPreference", "count": {"$sum": 1}}}
+        ]).to_list(10)
+        
+        food_preferences = {pref["_id"]: pref["count"] for pref in food_prefs}
+        
+        return {
+            "message": "Dashboard totals refreshed successfully",
+            "updated_stats": {
+                "totalInvitees": total_invitees,
+                "totalResponses": total_responses,
+                "rsvpYes": rsvp_yes, 
+                "rsvpNo": rsvp_no,
+                "accommodationRequests": accommodation_requests,
+                "foodPreferences": food_preferences
+            },
+            "fixes_applied": {
+                "response_flags_updated": True,
+                "totals_recomputed": True
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Refresh failed: {str(e)}")
+
+# ================== END SPRINT 2 ROUTES ==================
 
 @api_router.post("/cab-allocations/upload")
 async def upload_cab_allocations(file: UploadFile = File(...)):
