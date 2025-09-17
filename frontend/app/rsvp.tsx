@@ -72,6 +72,10 @@ export default function RSVPForm() {
         arrivalDate: requiresAccommodation ? arrivalDate : null,
         departureDate: requiresAccommodation ? departureDate : null,
         foodPreference,
+        // Sprint 3: Flight Time Preferences (only if accommodation required)
+        departureTimePreference: requiresAccommodation && departureTimePreference ? departureTimePreference : null,
+        arrivalTimePreference: requiresAccommodation && arrivalTimePreference ? arrivalTimePreference : null,
+        specialFlightRequirements: requiresAccommodation && specialFlightRequirements ? specialFlightRequirements.trim() : null,
       };
 
       const response = await fetch(`${EXPO_PUBLIC_BACKEND_URL}/api/responses`, {
