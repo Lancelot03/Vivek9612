@@ -1630,6 +1630,246 @@ async def get_connection_info():
 
 # ================== END SPRINT 3 PRIORITY 4 ROUTES ==================
 
+# ================== SPRINT 4: CONTENT & UX ROUTES ==================
+
+# Feedback Module
+class FeedbackCreate(BaseModel):
+    rating: int  # 1-5 scale
+    category: str  # "event", "logistics", "food", "accommodation", "overall", "suggestion" 
+    subject: Optional[str] = ""
+    message: str
+    anonymous: Optional[bool] = False
+    tags: Optional[List[str]] = []
+    priority: Optional[str] = "medium"
+    isPublic: Optional[bool] = False
+
+class FeedbackResponse(BaseModel):
+    admin_response: str
+    new_status: Optional[str] = "responded"
+
+@api_router.post("/feedback/submit")
+async def submit_feedback(feedback: FeedbackCreate, current_user: dict = Depends(get_current_user)):
+    """Submit feedback from authenticated user"""
+    try:
+        result = await feedback_service.submit_feedback(feedback.dict(), current_user.get("employeeId"))
+        return {
+            "message": "Feedback submitted successfully",
+            "feedback": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Feedback submission failed: {str(e)}")
+
+@api_router.get("/feedback/{feedback_id}")
+async def get_feedback(feedback_id: str):
+    """Get specific feedback by ID"""
+    try:
+        feedback = await feedback_service.get_feedback_by_id(feedback_id)
+        return {
+            "message": "Feedback retrieved successfully",
+            "feedback": feedback
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Feedback retrieval failed: {str(e)}")
+
+@api_router.get("/feedback/user/{employee_id}")
+async def get_user_feedback(employee_id: str, page: int = 1, limit: int = 10):
+    """Get all feedback submitted by a specific user"""
+    try:
+        result = await feedback_service.get_user_feedback(employee_id, page, limit)
+        return {
+            "message": f"User feedback retrieved for {employee_id}",
+            "data": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"User feedback retrieval failed: {str(e)}")
+
+@api_router.get("/feedback/admin/all")
+async def get_all_feedback_admin(
+    page: int = 1,
+    limit: int = 20,
+    category: Optional[str] = None,
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    rating: Optional[int] = None,
+    current_user: dict = Depends(get_current_user_optional)
+):
+    """Get all feedback for admin review"""
+    try:
+        result = await feedback_service.get_all_feedback_admin(page, limit, category, status, priority, rating)
+        return {
+            "message": "Admin feedback retrieved successfully",
+            "data": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Admin feedback retrieval failed: {str(e)}")
+
+@api_router.post("/feedback/{feedback_id}/respond")
+async def respond_to_feedback(
+    feedback_id: str, 
+    response: FeedbackResponse,
+    current_user: dict = Depends(get_current_user)
+):
+    """Admin response to feedback"""
+    try:
+        result = await feedback_service.respond_to_feedback(
+            feedback_id, 
+            response.admin_response, 
+            current_user.get("employeeId"),
+            response.new_status
+        )
+        return {
+            "message": "Admin response added successfully",
+            "response": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Admin response failed: {str(e)}")
+
+@api_router.get("/feedback/analytics")
+async def get_feedback_analytics():
+    """Get feedback analytics for admin dashboard"""
+    try:
+        analytics = await feedback_service.get_feedback_analytics()
+        return {
+            "message": "Feedback analytics retrieved successfully",
+            "analytics": analytics
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Feedback analytics failed: {str(e)}")
+
+@api_router.put("/feedback/{feedback_id}/status")
+async def update_feedback_status(
+    feedback_id: str, 
+    new_status: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update feedback status"""
+    try:
+        result = await feedback_service.update_feedback_status(feedback_id, new_status, current_user.get("employeeId"))
+        return {
+            "message": "Feedback status updated successfully",
+            "update": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Status update failed: {str(e)}")
+
+@api_router.get("/feedback/public/testimonials")
+async def get_public_testimonials(limit: int = 10):
+    """Get public testimonials for display"""
+    try:
+        testimonials = await feedback_service.get_public_testimonials(limit)
+        return {
+            "message": "Public testimonials retrieved successfully",
+            "testimonials": testimonials
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Public testimonials retrieval failed: {str(e)}")
+
+# Enhanced Gallery Management (Sprint 4)
+@api_router.post("/gallery/admin/upload")
+async def admin_upload_gallery_photos(
+    event_version: str,
+    photos: List[UploadFile] = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Admin upload photos for specific PM Connect version"""
+    try:
+        valid_versions = ["1.0", "2.0", "3.0"]
+        if event_version not in valid_versions:
+            raise HTTPException(status_code=400, detail=f"Invalid event version. Must be one of: {valid_versions}")
+        
+        uploaded_photos = []
+        for photo in photos:
+            if not photo.content_type.startswith('image/'):
+                continue
+            
+            photo_id = str(uuid.uuid4())
+            contents = await photo.read()
+            photo_base64 = base64.b64encode(contents).decode('utf-8')
+            
+            gallery_photo = {
+                "photoId": photo_id,
+                "employeeId": current_user.get("employeeId"),
+                "eventVersion": event_version,
+                "filename": photo.filename,
+                "photoData": photo_base64,
+                "uploadTimestamp": datetime.utcnow(),
+                "uploadedBy": "admin",
+                "isApproved": True,  # Admin uploads are auto-approved
+                "tags": ["official", f"pm-connect-{event_version}"]
+            }
+            
+            await db.gallery_photos.insert_one(gallery_photo)
+            uploaded_photos.append({
+                "photoId": photo_id,
+                "filename": photo.filename,
+                "eventVersion": event_version
+            })
+        
+        return {
+            "message": f"Successfully uploaded {len(uploaded_photos)} photos for PM Connect {event_version}",
+            "uploaded_photos": uploaded_photos
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Admin photo upload failed: {str(e)}")
+
+@api_router.get("/gallery/{event_version}/enhanced")
+async def get_enhanced_gallery(event_version: str, limit: int = 50):
+    """Get enhanced gallery with additional metadata"""
+    try:
+        photos = await db.gallery_photos.find({
+            "eventVersion": event_version
+        }).sort("uploadTimestamp", -1).limit(limit).to_list(limit)
+        
+        enhanced_photos = []
+        for photo in photos:
+            # Get uploader details
+            uploader_name = "Unknown"
+            if photo.get("employeeId"):
+                invitee = await db.invitees.find_one({"employeeId": photo["employeeId"]})
+                uploader_name = invitee.get("employeeName", "Unknown") if invitee else "Unknown"
+            
+            enhanced_photos.append({
+                "photoId": photo["photoId"],
+                "filename": photo.get("filename", ""),
+                "photoData": photo["photoData"],
+                "uploadTimestamp": photo["uploadTimestamp"],
+                "uploaderName": uploader_name,
+                "uploadedBy": photo.get("uploadedBy", "user"),
+                "isApproved": photo.get("isApproved", False),
+                "tags": photo.get("tags", [])
+            })
+        
+        return {
+            "message": f"Enhanced gallery for PM Connect {event_version}",
+            "photos": enhanced_photos,
+            "total_photos": len(enhanced_photos)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Enhanced gallery retrieval failed: {str(e)}")
+
+# Simple Branding Updates (Sprint 4)
+@api_router.get("/branding/info")
+async def get_branding_info():
+    """Get current branding information"""
+    return {
+        "message": "Branding information retrieved",
+        "branding": {
+            "company_name": "Jakson Group",
+            "app_name": "PM Connect 3.0",
+            "app_version": "3.0.0",
+            "theme_color": "#007bff",
+            "logo_url": "/assets/jakson-logo.png",
+            "tagline": "Connecting Progress Managers Across Jakson",
+            "event_series": "PM Connect Series",
+            "current_event": "PM Connect 3.0",
+            "previous_events": ["PM Connect 1.0", "PM Connect 2.0"]
+        }
+    }
+
+# ================== END SPRINT 4 ROUTES ==================
+
 # ================== CAB ALLOCATION ROUTES ==================
 
 @api_router.post("/cab-allocations/upload")
