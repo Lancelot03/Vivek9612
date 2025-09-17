@@ -118,6 +118,9 @@ class ExcelExportService:
                     "Arrival Date": response.get("arrivalDate", ""),
                     "Departure Date": response.get("departureDate", ""),
                     "Food Preference": response.get("foodPreference", ""),
+                    "Departure Time Preference": response.get("departureTimePreference", ""),
+                    "Arrival Time Preference": response.get("arrivalTimePreference", ""),
+                    "Special Flight Requirements": response.get("specialFlightRequirements", ""),
                     "Submission Date": response.get("submissionTimestamp").strftime('%Y-%m-%d') if response.get("submissionTimestamp") else "",
                     "Submission Time": response.get("submissionTimestamp").strftime('%H:%M:%S') if response.get("submissionTimestamp") else ""
                 }
