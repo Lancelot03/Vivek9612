@@ -77,14 +77,6 @@ export default function LoginScreen() {
     }
   };
 
-  const handleForgotPassword = () => {
-    Alert.alert(
-      'Password Reset',
-      'For password reset, please contact your administrator or try using your Employee Code as password if this is your first login.',
-      [{ text: 'OK' }]
-    );
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
