@@ -309,7 +309,11 @@ class PerformanceService:
         disk = psutil.disk_usage('/')
         
         # Database metrics
-        db_stats = await self.db.command("dbStats")
+        try:
+            db_stats = await self.db.command("dbStats")
+        except Exception as e:
+            logger.warning(f"Could not get database stats: {e}")
+            db_stats = {"collections": 0, "dataSize": 0, "storageSize": 0, "indexes": 0}
         
         # Application metrics
         cache_hit_rate = 0
@@ -317,24 +321,46 @@ class PerformanceService:
         if total_cache_requests > 0:
             cache_hit_rate = (self.performance_metrics["cache_hits"] / total_cache_requests) * 100
         
+        # Get collection document counts
+        try:
+            collections_info = []
+            collection_names = await self.db.list_collection_names()
+            for collection_name in collection_names:
+                try:
+                    count = await self.db[collection_name].count_documents({})
+                    collections_info.append({"name": collection_name, "count": count})
+                except Exception:
+                    collections_info.append({"name": collection_name, "count": 0})
+            
+            total_documents = sum(col["count"] for col in collections_info)
+        except Exception as e:
+            logger.warning(f"Could not get collection info: {e}")
+            collections_info = []
+            total_documents = 0
+        
         return {
             "timestamp": datetime.utcnow(),
             "system": {
                 "cpu_percent": cpu_percent,
                 "memory_percent": memory.percent,
                 "memory_available_gb": round(memory.available / (1024**3), 2),
-                "disk_percent": (disk.used / disk.total) * 100,
+                "disk_percent": round((disk.used / disk.total) * 100, 2),
                 "disk_free_gb": round(disk.free / (1024**3), 2)
             },
             "database": {
-                "collections": db_stats.get("collections", 0),
+                "collections": collections_info,
+                "total_documents": total_documents,
                 "data_size_mb": round(db_stats.get("dataSize", 0) / (1024**2), 2),
                 "storage_size_mb": round(db_stats.get("storageSize", 0) / (1024**2), 2),
                 "indexes": db_stats.get("indexes", 0)
             },
+            "cache": {
+                "hit_rate_percent": round(cache_hit_rate, 2),
+                "total_entries": len(self.cache),
+                "cache_hits": self.performance_metrics["cache_hits"],
+                "cache_misses": self.performance_metrics["cache_misses"]
+            },
             "application": {
-                "cache_hit_rate_percent": round(cache_hit_rate, 2),
-                "cache_entries": len(self.cache),
                 "active_connections": self.performance_metrics["active_connections"],
                 "api_endpoints_monitored": len(self.performance_metrics["api_calls"])
             },
