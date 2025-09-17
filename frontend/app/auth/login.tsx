@@ -12,15 +12,11 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import { useAuth } from '../../contexts/AuthContext';
-
 export default function LoginScreen() {
   const [employeeCode, setEmployeeCode] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  const { login } = useAuth();
 
   const validateForm = (): boolean => {
     if (!employeeCode.trim()) {
