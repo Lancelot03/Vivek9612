@@ -10,20 +10,20 @@ export default function RootLayout() {
           headerShown: false,
         }}
       >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="auth/login" />
-        <Stack.Screen name="auth/change-password" />
-        <Stack.Screen name="auth/office-type" />
-        <Stack.Screen name="rsvp" />
-        <Stack.Screen name="event-info" />
-        <Stack.Screen name="gallery" />
-        <Stack.Screen name="admin/dashboard" />
-        <Stack.Screen name="admin/login" />
-        <Stack.Screen name="admin/invitees" />
-        <Stack.Screen name="admin/responses" />
-        <Stack.Screen name="admin/agenda" />
-        <Stack.Screen name="admin/gallery-admin" />
-        <Stack.Screen name="admin/cab-allocations" />
+        <Stack.Screen name="index" options={{ title: 'Home' }} />
+        <Stack.Screen name="auth/login" options={{ title: 'Login' }} />
+        <Stack.Screen name="auth/change-password" options={{ title: 'Change Password' }} />
+        <Stack.Screen name="auth/office-type" options={{ title: 'Office Type' }} />
+        <Stack.Screen name="rsvp" options={{ title: 'RSVP' }} />
+        <Stack.Screen name="event-info" options={{ title: 'Event Info' }} />
+        <Stack.Screen name="gallery" options={{ title: 'Gallery' }} />
+        <Stack.Screen name="admin/dashboard" options={{ title: 'Admin Dashboard' }} />
+        <Stack.Screen name="admin/login" options={{ title: 'Admin Login' }} />
+        <Stack.Screen name="admin/invitees" options={{ title: 'Manage Invitees' }} />
+        <Stack.Screen name="admin/responses" options={{ title: 'Manage Responses' }} />
+        <Stack.Screen name="admin/agenda" options={{ title: 'Manage Agenda' }} />
+        <Stack.Screen name="admin/gallery-admin" options={{ title: 'Manage Gallery' }} />
+        <Stack.Screen name="admin/cab-allocations" options={{ title: 'Manage Cab Allocations' }} />
       </Stack>
     </AuthProvider>
   );
