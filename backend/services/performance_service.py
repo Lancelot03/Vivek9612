@@ -241,6 +241,7 @@ class PerformanceService:
             },
             {
                 "$project": {
+                    "_id": {"$toString": "$_id"},
                     "responseId": 1,
                     "employeeId": 1,
                     "mobileNumber": 1,
@@ -268,11 +269,11 @@ class PerformanceService:
         total_pages = (total_count + limit - 1) // limit
         
         return {
-            "responses": responses,
+            "items": responses,
             "pagination": {
                 "current_page": page,
                 "total_pages": total_pages,
-                "total_count": total_count,
+                "total_items": total_count,
                 "limit": limit,
                 "has_next": page < total_pages,
                 "has_prev": page > 1
