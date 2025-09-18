@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert, TextInput } from 'react-native';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 
 export default function HomePage() {
   const [showLogin, setShowLogin] = useState(false);
