@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Ale
 import { useRouter } from 'expo-router';
 
 export default function HomePage() {
+  const router = useRouter();
   const [showLogin, setShowLogin] = useState(false);
   const [employeeCode, setEmployeeCode] = useState('');
   const [password, setPassword] = useState('');
